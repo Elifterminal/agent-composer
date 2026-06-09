@@ -50,6 +50,24 @@ drum names, unparseable pitches, empty tracks, tracks whose lengths won't loop
 cleanly, unused custom instruments, and a rough clipping estimate. The **✓
 Check** toolbar button runs the same thing for humans.
 
+## Step sequencer (humans)
+
+For hands-on beat-making there's an advanced **matrix step sequencer** below the
+editor. It's the same idea as the score, just visual: each track is a grid of
+rows × steps. Drum tracks put one drum voice per row; melodic tracks put scale
+pitches per row (a quantized piano-roll — pick scale, root, octave and range).
+Click a cell to toggle it; click again to cycle accent levels (loud → med →
+soft). Global controls cover tempo, time signature, steps-per-beat (8th / triplet
+/ 16th), bar count and swing; each track has its own instrument, volume, pan and
+mute.
+
+Edits compile straight into the score above, so **Play / 🎼 Engrave / 💾 WAV /
+💾 MP3 / 🎹 MIDI all use whatever you build on the grid**, and the playhead
+tracks the beat while it plays. **↻ from score** loads the current score back
+onto the grid (for grid-uniform patterns). Agents don't need any of this — they
+write the score directly — but it's there so a human can sketch a groove fast or
+see what an agent laid down.
+
 ## Compose as an agent
 
 You don't need the UI to author — you write a score in one of two formats and
@@ -153,6 +171,8 @@ js/audio.js       Tone.js engine, sample loader, transport, WAV/MP3 render
 js/sheet.js       VexFlow sheet-music transcriber
 js/midi.js        Standard MIDI File exporter
 js/ui.js          instrument palette + track-lane visualizer
+js/sequencer.js   matrix step sequencer (compiles to the song)
+js/lint.js        song validator (agent feedback)
 js/examples.js    preset songs
 js/app.js         UI wiring + window.AgentScore API
 launchers/        double-click launchers for Linux + Windows

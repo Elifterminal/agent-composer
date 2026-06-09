@@ -233,8 +233,11 @@ function makeDrumKit() {
   return {
     output: out,
     trigger: (note, _dur, time, vel) => {
-      const fn = map[String(note).toLowerCase()];
-      if (fn) try { fn(time, vel ?? 0.85); } catch (e) {}
+      // accept a single drum name or an array (simultaneous hits, e.g. kick+hat)
+      for (const nm of (Array.isArray(note) ? note : [note])) {
+        const fn = map[String(nm).toLowerCase()];
+        if (fn) try { fn(time, vel ?? 0.85); } catch (e) {}
+      }
     },
     dispose: () => all.forEach((n) => { try { n.dispose(); } catch (e) {} }),
   };

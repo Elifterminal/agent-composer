@@ -95,3 +95,41 @@ footer{max-width:1180px; margin:6px auto 30px; padding:0 18px; color:var(--muted
   padding:5px 10px; font-size:12px; background:var(--bg2); color:var(--ink); cursor:pointer; transition:.1s}
 .pal-chip:hover{border-color:var(--c, var(--accent)); color:#fff}
 .pal-chip.playing{background:var(--c, var(--accent)); color:#04110d; border-color:var(--c)}
+
+/* ---- step sequencer ---- */
+.seq-panel .sheet-head{display:flex; align-items:center; gap:10px}
+.seq-panel .sheet-head #seqLoad{margin-left:auto}
+.seq{display:flex; flex-direction:column; gap:12px}
+.seq-global{display:flex; flex-wrap:wrap; gap:12px; align-items:end;
+  padding:10px; background:var(--bg2); border:1px solid var(--line); border-radius:10px}
+.seq-field{display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--muted)}
+.seq-field input,.seq-field select{font-family:var(--mono); font-size:12px; color:var(--ink);
+  background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:4px 6px}
+.seq-field input[type=number]{width:64px}
+.seq-field input[type=range]{width:90px; padding:0}
+.seq-tracks{display:flex; flex-direction:column; gap:14px}
+.seq-track{background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:10px; overflow-x:auto}
+.seq-thead{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px}
+.seq-thead input,.seq-thead select{font-family:var(--mono); font-size:11px; color:var(--ink);
+  background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:3px 5px}
+.seq-name{width:88px; font-weight:600}
+.seq-inst{max-width:180px}
+.seq-thead input[type=range]{width:70px; padding:0}
+.seq-mute,.seq-clr,.seq-del{font-family:var(--mono); font-size:11px; cursor:pointer;
+  background:var(--panel); color:var(--muted); border:1px solid var(--line); border-radius:6px; padding:3px 8px}
+.seq-mute.on{background:var(--warn); color:#1a0606; border-color:var(--warn)}
+.seq-del{color:var(--warn)}
+.seq-add{align-self:flex-start; font-family:var(--mono); font-size:12px; cursor:pointer;
+  background:var(--panel); color:var(--accent); border:1px dashed var(--line); border-radius:8px; padding:6px 12px}
+.seq-grid{display:flex; flex-direction:column; gap:3px; min-width:max-content}
+.seq-row{display:grid; grid-template-columns:54px repeat(var(--steps), 22px); gap:3px; align-items:center}
+.seq-rlabel{font-size:10px; color:var(--muted); text-align:right; padding-right:4px; white-space:nowrap}
+.seq-cell{height:22px; border-radius:4px; background:#101a28; border:1px solid #18243600; cursor:pointer;
+  transition:background .05s}
+.seq-cell.beat{background:#13202f}
+.seq-cell.bar{box-shadow:inset 2px 0 0 var(--accent2)}
+.seq-cell:hover{outline:1px solid var(--accent)}
+.seq-cell.on[data-lvl="1"]{background:var(--accent)}
+.seq-cell.on[data-lvl="2"]{background:#2bb59d}
+.seq-cell.on[data-lvl="3"]{background:#1f7d6e}
+.seq-cell.play{outline:2px solid var(--accent2); outline-offset:-1px}

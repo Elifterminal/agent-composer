@@ -5,6 +5,7 @@ import { renderSheet } from "./sheet.js";
 import { renderPalette, renderLanes } from "./ui.js";
 import { songToMidiBlob } from "./midi.js";
 import { lintSong } from "./lint.js";
+import { createSequencer } from "./sequencer.js";
 import { EXAMPLES } from "./examples.js";
 
 const INST_CAT = Object.fromEntries(INSTRUMENTS.map((i) => [i.id, i.cat]));
@@ -17,6 +18,7 @@ const els = {
   tabJson: $("tabJson"), tabMd: $("tabMd"), convert: $("convert"),
   json: $("json"), md: $("md"), error: $("error"), readout: $("readout"),
   viz: $("viz"), sheet: $("sheet"), lanes: $("lanes"), palette: $("palette"),
+  seqMount: $("seqMount"), seqLoad: $("seqLoad"),
 };
 
 let fmt = "json";          // active editor
@@ -90,6 +92,7 @@ function stop() {
   els.play.classList.remove("on");
   cancelAnimationFrame(rafId);
   clearViz();
+  if (seq) seq.setPlayhead(-1);
 }
 els.play.addEventListener("click", play);
 els.stop.addEventListener("click", stop);
@@ -109,6 +112,7 @@ function visualize() {
     i ? vctx.lineTo(x, y) : vctx.moveTo(x, y);
   }
   vctx.stroke(); vctx.shadowBlur = 0;
+  seqPlayhead();
   rafId = requestAnimationFrame(visualize);
 }
 
@@ -164,6 +168,27 @@ window.AgentScore = {
 };
 function parseText(text, isMd) { return isMd ? mdToSong(text) : jsonToSong(text); }
 
+// ---------- step sequencer ----------
+// The grid is an alternative authoring surface: editing a cell compiles the grid
+// into the active score (so Play / MIDI / WAV / engrave all use it). "↻ from
+// score" pulls the current editor back onto the grid (best-effort, grid-uniform
+// songs only).
+let seq = null;
+function syncFromSequencer() {
+  if (!seq) return;
+  const song = normalizeSong(seq.compile());
+  els.json.value = songToJson(song);
+  els.md.value = songToMd(song);
+  clearError(); setReadout(song);
+}
+function seqPlayhead() {
+  if (!seq || !engine) return;
+  const { stepSec, total } = seq.playInfo();
+  if (stepSec > 0 && total > 0) seq.setPlayhead(Math.floor(Tone.Transport.seconds / stepSec) % total);
+}
+
 // boot
 renderPalette(els.palette, INSTRUMENTS, previewInstrument);
+seq = createSequencer({ mount: els.seqMount, catalog: INSTRUMENTS, onChange: syncFromSequencer });
+els.seqLoad.addEventListener("click", () => { const s = getSong(); if (s && !seq.loadSong(s)) showError("can't load this score onto the grid (needs a uniform step pattern)"); });
 loadSong(normalizeSong(EXAMPLES[0].song));

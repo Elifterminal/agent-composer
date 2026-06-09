@@ -55,6 +55,14 @@
       <canvas id="viz" width="1200" height="120"></canvas>
     </section>
 
+    <section class="panel seq-panel">
+      <div class="sheet-head">STEP SEQUENCER
+        <span class="muted">— click cells to toggle (click again for accent levels) · edits drive the score above</span>
+        <button id="seqLoad" class="ghost" title="load the current score onto the grid (uniform step patterns only)">↻ from score</button>
+      </div>
+      <div id="seqMount" class="seq"></div>
+    </section>
+
     <section class="panel tracks-panel">
       <div class="sheet-head">TRACKS <span class="muted">— what the score plays · each lane is a track · height = pitch</span></div>
       <canvas id="lanes" class="lanes"></canvas>
@@ -90,8 +98,11 @@ MD    # Title
 
 dur   1=whole 2=half 4=quarter 8 16 32 · dotted 4. · triplet 8t
 chord C4+E4+G4:4      rest  r:4   (bar | is optional/visual)
-instr Synth · FMSynth · AMSynth · MonoSynth · DuoSynth · drumkit
-drums kick snare hat openhat clap tom ride crash</pre>
+instr 67 ids in the palette below · drumkit · or define your own (SPEC.md)
+drums kick kick808 sub snare rim clap hat openhat ride crash tom lowtom
+      hitom cowbell shaker tamb conga clave perc
+fx    per track: [{"type":"filter","mode":"lowpass","freq":1200,"q":4}, …]
+      filter delay pingpong distortion bitcrush chorus phaser tremolo reverb eq</pre>
       </div>
     </details>
   </main>
