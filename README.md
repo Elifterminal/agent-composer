@@ -102,31 +102,45 @@ Full grammar and edge cases: **[SPEC.md](SPEC.md)**.
 
 ## Instruments
 
-| id | character |
-|----|-----------|
-| `Synth` | clean default |
-| `FMSynth` | bell / metallic |
-| `AMSynth` | tremolo |
-| `MonoSynth` | fat bass / lead |
-| `DuoSynth` | detuned pad |
-| `drumkit` | percussion — see below |
+A track's `instrument` is an id from the catalog (≈67 sounds across 15
+categories). **Click any chip in the in-app palette to audition it — its id is
+copied to your clipboard** for the score. Two families:
 
-**Drum names** (for `drumkit` tracks): `kick snare hat openhat clap tom ride
-crash`. Duration still required (controls spacing): `kick:4 hat:8 hat:8
-snare:4`.
+- **Synth presets** (instant, offline, no assets) — Bass (`sub-bass`,
+  `reese-bass`, `acid-bass`…), Lead (`saw-lead`, `supersaw`, `fm-lead`…), Keys
+  (`e-piano`, `rhodes`, `clav`), Pad, Pluck, Mallet (`marimba`, `bell`,
+  `music-box`), Chip, FX, etc. Full list: `js/instruments.js` (`SYNTHS`).
+- **Sampled, realistic** (loaded on demand) — `piano`, `violin`, `cello`,
+  `contrabass`, `flute`, `clarinet`, `bassoon`, `saxophone`, `trumpet`,
+  `trombone`, `french-horn`, `tuba`, `guitar-acoustic`, `guitar-electric`,
+  `guitar-nylon`, `pipe organ`, `harmonium`, `xylophone`, `harp`. (`SAMPLED`).
+
+Back-compat ids (`Synth FMSynth AMSynth MonoSynth DuoSynth`) still work.
+
+**`drumkit`** — layer drums on separate tracks (one each for kick/snare/hats).
+Drum names: `kick snare hat openhat clap tom ride crash`; the duration sets the
+step (`kick:4 hat:8 hat:8 snare:4`).
 
 ## Files
 
 ```
-index.html      app shell + CDN libs
-styles.css      UI
-js/format.js    JSON <-> Markdown <-> Song, validation
-js/audio.js     Tone.js instruments, transport, offline WAV render
-js/sheet.js     VexFlow sheet-music transcriber
-js/examples.js  preset songs
-js/app.js       UI wiring
-SPEC.md         format specification
+index.html        app shell + CDN libs (Tone.js, VexFlow, lamejs) w/ SRI + CSP
+styles.css        UI
+js/format.js      JSON <-> Markdown <-> Song, validation
+js/instruments.js instrument catalog (synth presets + sampled maps)
+js/audio.js       Tone.js engine, sample loader, transport, WAV/MP3 render
+js/sheet.js       VexFlow sheet-music transcriber
+js/ui.js          instrument palette + track-lane visualizer
+js/examples.js    preset songs
+js/app.js         UI wiring + window.AgentScore API
+launchers/        double-click launchers for Linux + Windows
+SPEC.md           format specification
 ```
+
+## Run it as a desktop app
+
+Double-click launchers in `launchers/` (Linux `install-linux.sh` then the
+menu/Desktop icon; Windows `launch-windows.bat`). See `launchers/README.md`.
 
 ## Host it (GitHub Pages)
 
