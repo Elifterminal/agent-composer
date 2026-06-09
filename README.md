@@ -144,7 +144,9 @@ SPEC.md           format specification
 ## Run it as a desktop app
 
 Double-click launchers in `launchers/` (Linux `install-linux.sh` then the
-menu/Desktop icon; Windows `launch-windows.bat`). See `launchers/README.md`.
+menu/Desktop icon; Windows: run `install-windows.ps1` once to drop a Desktop +
+Start Menu shortcut, or just double-click `launch-windows.bat`). See
+`launchers/README.md`.
 
 ## Host it (GitHub Pages)
 
