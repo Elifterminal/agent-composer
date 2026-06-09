@@ -1,13 +1,13 @@
 // app.js — wires the editors, transport, sheet engraver and exporters together.
 import { jsonToSong, songToJson, mdToSong, songToMd, normalizeSong } from "./format.js";
-import { buildEngine, renderWav } from "./audio.js";
+import { buildEngine, renderWav, renderMp3 } from "./audio.js";
 import { renderSheet } from "./sheet.js";
 import { EXAMPLES } from "./examples.js";
 
 const $ = (id) => document.getElementById(id);
 const els = {
   ex: $("ex"), play: $("play"), stop: $("stop"), loop: $("loop"),
-  sheetBtn: $("sheetBtn"), wavBtn: $("wavBtn"), jsonBtn: $("jsonBtn"), mdBtn: $("mdBtn"),
+  sheetBtn: $("sheetBtn"), wavBtn: $("wavBtn"), mp3Btn: $("mp3Btn"), jsonBtn: $("jsonBtn"), mdBtn: $("mdBtn"),
   tabJson: $("tabJson"), tabMd: $("tabMd"), convert: $("convert"),
   json: $("json"), md: $("md"), error: $("error"), readout: $("readout"),
   viz: $("viz"), sheet: $("sheet"),
@@ -106,16 +106,17 @@ function visualize() {
 // ---------- engrave / export ----------
 els.sheetBtn.addEventListener("click", () => { const s = getSong(); if (s) renderSheet(els.sheet, s, s.timeSignature); });
 
-els.wavBtn.addEventListener("click", async () => {
+async function exportAudio(btn, label, ext, renderFn) {
   const song = getSong(); if (!song) return;
-  els.wavBtn.disabled = true; els.wavBtn.textContent = "💾 rendering…";
+  btn.disabled = true; const orig = btn.textContent; btn.textContent = "⏳ rendering…";
   try {
     await Tone.start();
-    const blob = await renderWav(song);
-    download(blob, `${slug(song.title)}.wav`);
-  } catch (e) { showError("WAV render failed: " + e.message); }
-  els.wavBtn.disabled = false; els.wavBtn.textContent = "💾 Export WAV";
-});
+    download(await renderFn(song), `${slug(song.title)}.${ext}`);
+  } catch (e) { showError(`${label} render failed: ` + e.message); }
+  btn.disabled = false; btn.textContent = orig;
+}
+els.wavBtn.addEventListener("click", () => exportAudio(els.wavBtn, "WAV", "wav", renderWav));
+els.mp3Btn.addEventListener("click", () => exportAudio(els.mp3Btn, "MP3", "mp3", (s) => renderMp3(s, 192)));
 els.jsonBtn.addEventListener("click", () => { const s = getSong(); if (s) download(new Blob([songToJson(s)], { type: "application/json" }), `${slug(s.title)}.json`); });
 els.mdBtn.addEventListener("click", () => { const s = getSong(); if (s) download(new Blob([songToMd(s)], { type: "text/markdown" }), `${slug(s.title)}.md`); });
 
@@ -128,6 +129,17 @@ function slug(s) { return (s || "song").toLowerCase().replace(/[^a-z0-9]+/g, "-"
 
 window.addEventListener("resize", () => { const s = safeSong(); if (s) renderSheet(els.sheet, s, s.timeSignature); });
 function safeSong() { try { return fmt === "json" ? jsonToSong(els.json.value) : mdToSong(els.md.value); } catch { return null; } }
+
+// ---------- programmatic API ----------
+// Lets an agent / automation render headlessly and capture the bytes directly
+// (e.g. `await AgentScore.renderMp3Blob(jsonText)`), with no servers or CORS.
+// Pure rendering helpers; safe to call from the console.
+window.AgentScore = {
+  jsonToSong, mdToSong, songToJson, songToMd, normalizeSong,
+  async renderWavBlob(text, isMd = false) { await Tone.start(); return renderWav(parseText(text, isMd)); },
+  async renderMp3Blob(text, isMd = false, kbps = 192) { await Tone.start(); return renderMp3(parseText(text, isMd), kbps); },
+};
+function parseText(text, isMd) { return isMd ? mdToSong(text) : jsonToSong(text); }
 
 // boot
 loadSong(normalizeSong(EXAMPLES[0].song));

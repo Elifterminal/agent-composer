@@ -2,12 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' blob: data:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>AGENTSCORE — a music composer for AI agents</title>
 <meta name="description" content="A text-native music composer: write songs as JSON or Markdown, play them, engrave sheet music, export WAV. Built for AI agents." />
 <link rel="stylesheet" href="styles.css" />
-<script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"
+        integrity="sha384-c6Uo4N9c3SOEigMVzP6IshUG1wQ5uMp3xeoQFiHWAQ86joWdgyajkvopySyKy/Z6" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"
+        integrity="sha384-NOpv0+9OuhqtqeXLSoULPF4d3UCwlWkmcHkJklpAosC7LpqYvhFCFqqu9QElzbjS" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"
+        integrity="sha384-xuasJXVcyv3hZq0eYpelEkBC8l4yufatZXDsKuyCU2rqfhDCb+ftuE/mSfZAteiK" crossorigin="anonymous"></script>
 </head>
 <body>
   <header class="topbar">
@@ -25,7 +30,8 @@
       <label class="chk"><input type="checkbox" id="loop" /> loop</label>
       <span class="spacer"></span>
       <button id="sheetBtn">🎼 Engrave</button>
-      <button id="wavBtn">💾 Export WAV</button>
+      <button id="wavBtn">💾 WAV</button>
+      <button id="mp3Btn">💾 MP3</button>
       <button id="jsonBtn">⬇ .json</button>
       <button id="mdBtn">⬇ .md</button>
       <span class="readout" id="readout">—</span>

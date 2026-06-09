@@ -115,8 +115,8 @@ export function buildEngine(song) {
   };
 }
 
-// Offline render the whole song to a WAV Blob.
-export async function renderWav(song) {
+// Offline-render the whole song to a native AudioBuffer (stereo, 44.1 kHz).
+export async function renderBuffer(song) {
   let length = 0.5;
   for (const t of song.tracks) length = Math.max(length, eventsForTrack(t).length);
   const tail = 2.5; // let reverb / releases ring out
@@ -135,7 +135,39 @@ export async function renderWav(song) {
     Tone.Transport.start();
   }, length + tail, 2, 44100);
 
-  return audioBufferToWavBlob(buffer.get());
+  return buffer.get(); // native AudioBuffer
+}
+
+export async function renderWav(song) { return audioBufferToWavBlob(await renderBuffer(song)); }
+export async function renderMp3(song, kbps = 192) { return audioBufferToMp3Blob(await renderBuffer(song), kbps); }
+
+// float channel -> Int16Array
+function floatToInt16(data) {
+  const out = new Int16Array(data.length);
+  for (let i = 0; i < data.length; i++) {
+    const s = Math.max(-1, Math.min(1, data[i]));
+    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return out;
+}
+
+// MP3 encode via lamejs (loaded globally). Stereo, CBR.
+function audioBufferToMp3Blob(ab, kbps) {
+  if (!window.lamejs) throw new Error("MP3 encoder (lamejs) not loaded");
+  const ch = Math.min(2, ab.numberOfChannels), sr = ab.sampleRate;
+  const enc = new window.lamejs.Mp3Encoder(ch, sr, kbps);
+  const left = floatToInt16(ab.getChannelData(0));
+  const right = ch > 1 ? floatToInt16(ab.getChannelData(1)) : left;
+  const block = 1152, parts = [];
+  for (let i = 0; i < left.length; i += block) {
+    const l = left.subarray(i, i + block);
+    const r = right.subarray(i, i + block);
+    const buf = ch > 1 ? enc.encodeBuffer(l, r) : enc.encodeBuffer(l);
+    if (buf.length) parts.push(new Int8Array(buf));
+  }
+  const end = enc.flush();
+  if (end.length) parts.push(new Int8Array(end));
+  return new Blob(parts, { type: "audio/mpeg" });
 }
 
 // Minimal 16-bit PCM WAV encoder (no deps).

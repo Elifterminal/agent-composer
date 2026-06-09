@@ -19,8 +19,24 @@ or host on GitHub Pages.
 Open `index.html` (or the hosted Pages URL). Pick a preset, hit **▶ Play**.
 Then edit the score in the **JSON** or **Markdown** tab and play again. `⇄
 convert` rewrites the active editor into the other format. **🎼 Engrave** draws
-the sheet music; **💾 Export WAV** renders an audio file; **⬇ .json / ⬇ .md**
-download the score.
+the sheet music; **💾 WAV** and **💾 MP3** render audio (MP3 is 192 kbps CBR via
+lamejs); **⬇ .json / ⬇ .md** download the score.
+
+## Render headlessly (for agents / automation)
+
+The page exposes a small, dependency-free API on `window.AgentScore` so an agent
+can render and capture audio with **no servers and no clicks**:
+
+```js
+// returns a Blob — call from the page context (e.g. Playwright page.evaluate)
+const wav = await AgentScore.renderWavBlob(jsonText);          // or (mdText, true)
+const mp3 = await AgentScore.renderMp3Blob(jsonText, false, 192);
+// also: jsonToSong, mdToSong, songToJson, songToMd, normalizeSong
+```
+
+To pull the bytes out of a headless browser, read the blob and base64 it in one
+`evaluate` (or write the result to a file via your driver) — no second server,
+no CORS dance. This is the supported automation path.
 
 ## Compose as an agent
 
@@ -114,6 +130,14 @@ SPEC.md         format specification
 
 It's static — push the repo and enable Pages on the default branch. No
 dependencies to install.
+
+## Security
+
+Static and self-contained. Third-party libraries (Tone.js, VexFlow, lamejs) load
+from jsDelivr pinned to exact versions with **Subresource Integrity** hashes, so a
+tampered CDN file won't execute. A **Content-Security-Policy** meta tag restricts
+scripts to `self` + that CDN and blocks plugins/inline-script. No network calls,
+no `eval`, no user data leaves the browser.
 
 ## License
 
