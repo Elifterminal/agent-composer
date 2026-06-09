@@ -106,4 +106,24 @@ export const EXAMPLES = [
       ],
     },
   },
+  {
+    name: "Jungle Roller (slicer)",
+    song: {
+      title: "Jungle Roller", tempo: 172, timeSignature: "4/4", swing: 0,
+      master: { volume: -5, reverb: 0.12 },
+      // re-chop the bundled (synthesized, license-clean) jungle break, 16 slices
+      instruments: {
+        amen: { type: "slicer", url: "/samples/breaks/jungle.wav", slices: 16, gain: 2 },
+      },
+      tracks: [
+        { name: "Break", instrument: "amen", volume: -3, fx: [{ type: "filter", mode: "highpass", freq: 120 }], notes: [
+          {note:"0",dur:"16n"},{note:"1",dur:"16n"},{note:"2",dur:"16n"},{note:"3",dur:"16n"},
+          {note:"4",dur:"16n"},{note:"5",dur:"16n"},{note:"2",dur:"16n"},{note:"7",dur:"16n"},
+          {note:"8",dur:"16n"},{note:"4",dur:"16n"},{note:"10",dur:"16n"},{note:"11",dur:"16n"},
+          {note:"12",dur:"16n"},{note:"6",dur:"16n"},{note:"14",dur:"16n"},{note:"15",dur:"16n"} ] },
+        { name: "Sub", instrument: "sub-bass", volume: -3, notes: [
+          {note:"E1",dur:"2n"},{note:"E1",dur:"4n"},{note:"G1",dur:"4n"} ] },   // 1 bar, loops with the break
+      ],
+    },
+  },
 ];

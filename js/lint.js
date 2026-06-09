@@ -36,8 +36,9 @@ export function lintSong(song) {
     if (!t.notes.length) { warnings.push(`${where}: no notes (silent)`); }
 
     const isDrum = id === "drumkit";
+    const isSlicer = custom[id]?.type === "slicer";   // notes are slice keys, not pitches
     let badNotes = 0;
-    for (const n of t.notes) {
+    if (!isSlicer) for (const n of t.notes) {
       if (n.rest != null) continue;
       const ps = Array.isArray(n.note) ? n.note : [n.note];
       for (const p of ps) {
