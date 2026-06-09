@@ -7,6 +7,7 @@
 <title>AGENTSCORE — a music composer for AI agents</title>
 <meta name="description" content="A text-native music composer: write songs as JSON or Markdown, play them, engrave sheet music, export WAV. Built for AI agents." />
 <link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="launchers/icon.png" />
 <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"
         integrity="sha384-c6Uo4N9c3SOEigMVzP6IshUG1wQ5uMp3xeoQFiHWAQ86joWdgyajkvopySyKy/Z6" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"
@@ -25,6 +26,10 @@
       <label>Preset
         <select id="ex"></select>
       </label>
+      <button id="openBtn" title="open a .json / .md / .abc score (Ctrl+O)">📂 Open</button>
+      <button id="saveBtn" title="save to the open file (Ctrl+S)">💾 Save</button>
+      <button id="saveAsBtn" class="ghost" title="save as… (Ctrl+Shift+S)">as…</button>
+      <span class="filelabel" id="fileLabel"></span>
       <button id="play" class="primary">▶ Play</button>
       <button id="stop">■ Stop</button>
       <label class="chk"><input type="checkbox" id="loop" /> loop</label>
@@ -33,10 +38,15 @@
       <button id="checkBtn">✓ Check</button>
       <button id="wavBtn">💾 WAV</button>
       <button id="mp3Btn">💾 MP3</button>
+      <button id="stemsBtn" title="every audible track as its own aligned WAV, zipped">🎚 Stems</button>
       <button id="midiBtn">🎹 MIDI</button>
       <button id="jsonBtn">⬇ .json</button>
       <button id="mdBtn">⬇ .md</button>
       <span class="readout" id="readout">—</span>
+      <div class="transwrap">
+        <div class="transbar" id="transBar" title="click to seek"><div class="transfill" id="transFill"></div></div>
+        <span class="transtime" id="transTime">—</span>
+      </div>
     </section>
 
     <section class="panel editor">
@@ -62,6 +72,16 @@ F F G A | A G F E | D D E F | E3/2 D/2 D2 |</textarea>
 
     <section class="panel viz-panel">
       <canvas id="viz" width="1200" height="120"></canvas>
+    </section>
+
+    <section class="panel roll-panel">
+      <div class="sheet-head">PIANO ROLL <span class="muted">— edit notes directly · synced with the score above</span></div>
+      <div id="rollMount" class="roll"></div>
+    </section>
+
+    <section class="panel mix-panel">
+      <div class="sheet-head">MIXER <span class="muted">— levels, pan, mute/solo per track · writes into the score</span></div>
+      <div id="mixMount"></div>
     </section>
 
     <section class="panel seq-panel">
@@ -92,7 +112,7 @@ F F G A | A G F E | D D E F | E3/2 D/2 D2 |</textarea>
       <div class="help-body">
 <pre>JSON  { "title","tempo","timeSignature","swing",
         "master":{"volume"(dB),"reverb"(0..1)},
-        "tracks":[ { "name","instrument","volume"(dB),"pan"(-1..1),"mute",
+        "tracks":[ { "name","instrument","volume"(dB),"pan"(-1..1),"mute","solo",
                      "notes":[ {"note":"A4","dur":"4n","vel":0.85},
                                {"note":["C4","E4","G4"],"dur":"2n"},   // chord
                                {"rest":"8n"} ] } ] }
@@ -100,7 +120,7 @@ F F G A | A G F E | D D E F | E3/2 D/2 D2 |</textarea>
 MD    # Title
       tempo: 120
       time: 4/4
-      ## Lead | FMSynth | vol -8 pan 0
+      ## Lead | FMSynth | vol -8 pan 0       (flags: mute solo)
       A4:4 C5:8 E5:8 D5:4 | B4:4 D5:8 F5:8 E5:2
       ## Drums | drumkit
       kick:4 hat:8 hat:8 snare:4

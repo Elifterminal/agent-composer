@@ -133,3 +133,46 @@ footer{max-width:1180px; margin:6px auto 30px; padding:0 18px; color:var(--muted
 .seq-cell.on[data-lvl="2"]{background:#2bb59d}
 .seq-cell.on[data-lvl="3"]{background:#1f7d6e}
 .seq-cell.play{outline:2px solid var(--accent2); outline-offset:-1px}
+
+/* ---- file label + transport bar ---- */
+.filelabel{color:var(--accent2); font-size:11px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.transwrap{flex-basis:100%; display:flex; align-items:center; gap:10px; margin-top:4px}
+.transbar{flex:1; height:10px; border-radius:5px; background:#05080d; border:1px solid var(--line); cursor:pointer; overflow:hidden}
+.transfill{height:100%; width:0; background:linear-gradient(90deg, var(--accent), var(--accent2)); transition:width .05s linear}
+.transtime{color:var(--muted); font-size:11px; min-width:86px; text-align:right}
+
+/* ---- piano roll ---- */
+.roll-bar{display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap}
+.roll-bar select{font-size:12px}
+.roll-track{max-width:260px}
+.roll-zoom{padding:4px 10px; font-size:13px; line-height:1}
+.roll-hint{font-size:10.5px; margin-left:auto}
+.roll-scroll{overflow:auto; max-height:420px; border-radius:10px; background:#0a1018}
+.roll-scroll canvas{display:block; cursor:crosshair; outline:none}
+
+/* ---- mixer ---- */
+.mix-row{display:flex; gap:10px; overflow-x:auto; align-items:stretch; padding-bottom:4px}
+.mix-strip{display:flex; flex-direction:column; align-items:center; gap:8px; min-width:104px;
+  background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:10px 8px}
+.mix-strip.master{border-color:var(--accent2); margin-left:auto}
+.mix-name{width:88px; text-align:center; font-family:var(--mono); font-size:11px; font-weight:600;
+  color:var(--ink); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:3px 4px}
+.mix-name.static{border-color:transparent; background:transparent; color:var(--accent2); letter-spacing:1px}
+.mix-inst{max-width:96px; font-size:10.5px; padding:3px 4px}
+.mix-fx{font-size:10px; color:var(--accent); border:1px dashed var(--line); border-radius:5px; padding:1px 6px}
+.mix-panwrap{display:flex; align-items:center; gap:4px}
+.mix-lab{font-size:9px; color:var(--muted)}
+.mix-pan{width:64px; padding:0}
+.mix-faderwrap{display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; justify-content:flex-end}
+.mix-fader{writing-mode:vertical-lr; direction:rtl;
+  width:22px; height:130px; padding:0; accent-color:var(--accent)}
+.mix-fader.master{accent-color:var(--accent2)}
+.mix-db{font-size:10px; color:var(--muted); min-width:56px; text-align:center}
+.mix-btns{display:flex; gap:4px}
+.mix-m,.mix-s,.mix-x{font-family:var(--mono); font-size:10.5px; padding:3px 8px; cursor:pointer;
+  background:var(--panel); color:var(--muted); border:1px solid var(--line); border-radius:6px}
+.mix-m.on{background:var(--warn); color:#1a0606; border-color:var(--warn)}
+.mix-s.on{background:#f7b731; color:#1a1206; border-color:#f7b731}
+.mix-x{color:var(--warn)}
+.mix-add{align-self:center; font-family:var(--mono); font-size:12px; cursor:pointer; min-width:80px;
+  background:var(--bg2); color:var(--accent); border:1px dashed var(--line); border-radius:10px; padding:6px 12px}

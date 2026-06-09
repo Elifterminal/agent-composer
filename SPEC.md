@@ -25,6 +25,7 @@ values are clamped rather than rejected.
 | `volume` | number | `-8` | dB |
 | `pan` | number | `0` | −1 (L) … 1 (R) |
 | `mute` | boolean | `false` | |
+| `solo` | boolean | `false` | if ANY track is soloed, only soloed tracks sound (DAW semantics) |
 | `fx` | Fx[] | `[]` | per-track effect chain (see below) |
 | `notes` | Note[] | `[]` | played sequentially |
 
@@ -57,14 +58,14 @@ time: <n/d>
 swing: <0..1>
 master: vol <dB> reverb <0..1>
 
-## <name> | <instrument> | vol <dB> pan <-1..1> [mute]
+## <name> | <instrument> | vol <dB> pan <-1..1> [mute] [solo]
 <token> <token> | <token> ...
 ```
 
 - **Header lines** (`tempo:`, `time:`, `swing:`, `master:`) may appear in any
   order before/after tracks; the `# ` line is the title.
 - **Track header**: `## ` then `Name | Instrument | options`. Instrument and
-  options are optional. Options: `vol <dB>`, `pan <n>`, `mute`.
+  options are optional. Options: `vol <dB>`, `pan <n>`, `mute`, `solo`.
 - **Pattern lines** under a track are a whitespace-separated list of tokens.
   Multiple pattern lines under one header are concatenated.
 
@@ -102,10 +103,17 @@ duration can't be parsed is skipped.
   mapped to GM drums on channel 10; tempo + time signature in a conductor track.
   Notes/chords/rests and velocities are preserved; per-track `fx` and the exact
   synth voicing are not (MIDI carries no audio).
+- **Stems** — every audible track rendered **solo through the identical master
+  chain**, forced to the full mix length, packaged as one ZIP of WAVs
+  (`NN-trackname.wav`). Stems are sample-aligned and **sum back to the mix**
+  (verified to within 16-bit quantization noise). Muted tracks are skipped; if
+  any track is soloed, only soloed tracks are exported.
 - **.json / .md** — the score itself, in either format.
 - **Programmatic**: `window.AgentScore.renderWavBlob(text, isMd?)`,
   `renderMp3Blob(text, isMd?, kbps?)`, and `renderMidiBlob(text, isMd?)` each
-  return a `Blob` for headless capture.
+  return a `Blob` for headless capture. Stems:
+  `renderStemsZipBlob(text, isMd?, tailSec?)` → ZIP blob, and
+  `renderStemWavBlob(text, trackIndex, isMd?, tailSec?)` → single WAV blob.
 
 ## Notes / limits
 

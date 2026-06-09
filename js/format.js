@@ -116,6 +116,7 @@ function normalizeTrack(t, i) {
     volume: clampNum(t.volume, -60, 6, -8),
     pan: clampNum(t.pan, -1, 1, 0),
     mute: !!t.mute,
+    solo: !!t.solo,
     fx: normalizeFx(t.fx),
     notes: (Array.isArray(t.notes) ? t.notes : []).map(normalizeNote).filter(Boolean),
   };
@@ -173,7 +174,7 @@ export function songToMd(song) {
   if (s.instruments && Object.keys(s.instruments).length) lines.push(`> instruments: ${JSON.stringify(s.instruments)}`);
   lines.push("");
   for (const t of s.tracks) {
-    const head = `## ${t.name} | ${t.instrument} | vol ${t.volume} pan ${t.pan}${t.mute ? " mute" : ""}`;
+    const head = `## ${t.name} | ${t.instrument} | vol ${t.volume} pan ${t.pan}${t.mute ? " mute" : ""}${t.solo ? " solo" : ""}`;
     lines.push(head);
     if (t.fx && t.fx.length) lines.push(`> fx: ${JSON.stringify(t.fx)}`);
     const toks = t.notes.map((n) => {
@@ -219,11 +220,12 @@ export function mdToSong(text) {
 
 function parseTrackHeader(s) {
   const parts = s.split("|").map((x) => x.trim());
-  const t = { name: parts[0] || "Track", instrument: parts[1] || "Synth", volume: -8, pan: 0, mute: false, fx: [], notes: [] };
+  const t = { name: parts[0] || "Track", instrument: parts[1] || "Synth", volume: -8, pan: 0, mute: false, solo: false, fx: [], notes: [] };
   const opts = (parts[2] || "");
   const v = /vol\s*(-?[\d.]+)/i.exec(opts); if (v) t.volume = +v[1];
   const p = /pan\s*(-?[\d.]+)/i.exec(opts); if (p) t.pan = +p[1];
   if (/\bmute\b/i.test(opts)) t.mute = true;
+  if (/\bsolo\b/i.exec(opts)) t.solo = true;
   return t;
 }
 function parseNoteLine(line, track) {

@@ -20,10 +20,18 @@ Open `index.html` (or the hosted Pages URL). Pick a preset, hit **▶ Play**.
 Then edit the score in the **JSON** or **Markdown** tab and play again. `⇄
 convert` rewrites the active editor into the other format. **🎼 Engrave** draws
 the sheet music; **💾 WAV** and **💾 MP3** render audio (MP3 is 192 kbps CBR via
-lamejs); **🎹 MIDI** exports a Standard MIDI File (drumkit → GM channel 10) for
-any DAW; **⬇ .json / ⬇ .md** download the score. Tick **loop** before exporting
-to render a **seamless loop** — the render is trimmed to the exact bar length
-(no reverb tail) so end meets beginning cleanly.
+lamejs); **🎚 Stems** renders every audible track as its own aligned WAV and
+zips them; **🎹 MIDI** exports a Standard MIDI File (drumkit → GM channel 10)
+for any DAW; **⬇ .json / ⬇ .md** download the score. Tick **loop** before
+exporting to render a **seamless loop** — the render is trimmed to the exact
+bar length (no reverb tail) so end meets beginning cleanly.
+
+**Files**: **📂 Open** (Ctrl+O) loads a `.json` / `.md` / `.abc` score —
+or just **drag a file onto the page**. **💾 Save** (Ctrl+S) writes back to the
+same file (Chromium; elsewhere it downloads), **as…** is Save As. The name by
+the buttons shows the open file and a `•` when there are unsaved edits. The
+**position bar** under the toolbar seeks — click anywhere to jump, while
+playing or before you hit Play.
 
 ## Render headlessly (for agents / automation)
 
@@ -35,6 +43,8 @@ can render and capture audio with **no servers and no clicks**:
 const wav = await AgentScore.renderWavBlob(jsonText);          // or (mdText, true)
 const mp3 = await AgentScore.renderMp3Blob(jsonText, false, 192);
 const mid = AgentScore.renderMidiBlob(jsonText);               // Standard MIDI File
+const zip = await AgentScore.renderStemsZipBlob(jsonText);     // all audible tracks as aligned WAVs
+const one = await AgentScore.renderStemWavBlob(jsonText, 2);   // just track index 2, full mix length
 const report = AgentScore.lint(jsonText);                      // { ok, errors, warnings, info }
 const song = AgentScore.abcToSong(abcText);                    // import ABC notation -> Song
 // also: jsonToSong, mdToSong, songToJson, songToMd, normalizeSong
@@ -50,6 +60,28 @@ against: `{ ok, errors[], warnings[], info }`. It flags unknown instruments and
 drum names, unparseable pitches, empty tracks, tracks whose lengths won't loop
 cleanly, unused custom instruments, and a rough clipping estimate. The **✓
 Check** toolbar button runs the same thing for humans.
+
+## Piano roll + mixer (humans)
+
+The **piano roll** is a real note editor: pick a track, then **drag on empty
+space to draw a note** (drag length sets duration), **drag a note to move it**
+(pitch + time), **drag its right edge to resize**, **double-click or
+right-click to delete**, **alt+wheel for velocity**. Snap covers 1/4 → 1/32
+plus eighth-triplets. Drum tracks get one row per drum voice. Notes that start
+together become chords; gaps become rests; overlaps the sequential format can't
+express auto-trim the earlier note — what you see is exactly what lands in the
+score text, and the playhead tracks playback.
+
+The **mixer** is a row of DAW-style channel strips — per track: name,
+instrument, pan, a vertical fader with dB readout, **M**ute / **S**olo, and an
+fx-count badge — plus a master strip (volume + reverb). `solo` follows standard
+DAW semantics (if anything is soloed, only soloed tracks sound) and lives in
+the format itself (`"solo": true`, or `solo` in an MD track header), so agents
+can use it too — it also drives which tracks a **🎚 Stems** export includes.
+
+Both surfaces write straight into the JSON/MD text and rebuild from it, so a
+human dragging notes and an agent rewriting JSON are always editing the same
+score.
 
 ## Step sequencer (humans)
 
@@ -193,6 +225,10 @@ js/midi.js        Standard MIDI File exporter
 js/abc.js         ABC-notation importer (ABC -> Song)
 js/ui.js          instrument palette + track-lane visualizer
 js/sequencer.js   matrix step sequencer (compiles to the song)
+js/pianoroll.js   piano-roll note editor (canvas; compiles to the song)
+js/mixer.js       channel strips + master (writes into the score)
+js/files.js       open/save on disk (File System Access API + fallback)
+js/zip.js         store-only ZIP writer (stem packaging)
 js/lint.js        song validator (agent feedback)
 js/examples.js    preset songs
 js/app.js         UI wiring + window.AgentScore API

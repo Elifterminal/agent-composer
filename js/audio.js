@@ -49,7 +49,7 @@ export async function ensureSamplesLoaded(song) {
   await Promise.all(tasks);
 }
 
-const DRUMS = ["kick", "kick808", "sub", "snare", "rim", "clap", "hat", "openhat",
+export const DRUMS = ["kick", "kick808", "sub", "snare", "rim", "clap", "hat", "openhat",
   "tom", "lowtom", "hitom", "ride", "crash", "cowbell", "shaker", "tamb", "conga", "clave", "perc"];
 export function isDrumName(n) { return DRUMS.includes(String(n).toLowerCase()); }
 
@@ -273,6 +273,13 @@ export function probeInstruments() {
   return res;
 }
 
+// Mixer audibility: a muted track is silent; if ANY track is soloed, only the
+// soloed tracks sound (standard DAW semantics).
+export function trackAudible(song, track) {
+  if (track.mute) return false;
+  return !song.tracks.some((t) => t.solo) || !!track.solo;
+}
+
 // Convert a track's notes (sequential) into timed events in seconds (bpm-aware).
 function eventsForTrack(track) {
   const evs = [];
@@ -301,7 +308,7 @@ export function buildEngine(song) {
   let length = 0;
   for (const track of song.tracks) {
     const inst = makeInstrument(track.instrument, song.instruments);
-    const panvol = new Tone.PanVol(track.pan, track.mute ? -Infinity : track.volume);
+    const panvol = new Tone.PanVol(track.pan, trackAudible(song, track) ? track.volume : -Infinity);
     const fx = buildFxChain(track.fx);
     if (fx) { inst.output.connect(fx.input); fx.output.connect(panvol); insts.push(fx); }
     else inst.output.connect(panvol);
@@ -316,12 +323,12 @@ export function buildEngine(song) {
 
   return {
     analyser, length,
-    start(loop) {
+    start(loop, offsetSec = 0) {
       Tone.Transport.loop = !!loop;
       Tone.Transport.loopStart = 0;
       Tone.Transport.loopEnd = length;
       parts.forEach((p) => { p.loop = !!loop; p.loopEnd = length; p.start(0); });
-      Tone.Transport.start();
+      Tone.Transport.start(undefined, Math.min(Math.max(0, offsetSec), Math.max(0, length - 0.05)));
     },
     stop() { Tone.Transport.stop(); Tone.Transport.cancel(); },
     dispose() {
@@ -335,12 +342,14 @@ export function buildEngine(song) {
 // Offline-render the whole song to a native AudioBuffer (stereo, 44.1 kHz).
 // tailSec adds time past the last note for reverb/releases to ring out; pass 0
 // for a seamless loop (render is then exactly the musical length).
-export async function renderBuffer(song, tailSec = 2.5) {
+// minLengthSec forces a floor on the musical length — stem renders use it so
+// every stem comes out the same length as the full mix.
+export async function renderBuffer(song, tailSec = 2.5, minLengthSec = 0) {
   // eventsForTrack resolves durations via Tone.Time(...).toSeconds(), which reads
   // the transport BPM — set it to the song tempo FIRST, or the buffer gets sized
   // at the default 120 BPM and a slower song is truncated (its tail cut off).
   Tone.Transport.bpm.value = song.tempo;
-  let length = 0.5;
+  let length = Math.max(0.5, minLengthSec);
   for (const t of song.tracks) length = Math.max(length, eventsForTrack(t).length);
   const tail = Math.max(0, tailSec);
   await ensureSamplesLoaded(song);            // decode samples in the live context first
@@ -355,7 +364,7 @@ export async function renderBuffer(song, tailSec = 2.5) {
     const fxChains = [];
     const built = song.tracks.map((track) => {
       const inst = makeInstrument(track.instrument, song.instruments);
-      const panvol = new Tone.PanVol(track.pan, track.mute ? -Infinity : track.volume).connect(reverb);
+      const panvol = new Tone.PanVol(track.pan, trackAudible(song, track) ? track.volume : -Infinity).connect(reverb);
       const fx = buildFxChain(track.fx);
       if (fx) { inst.output.connect(fx.input); fx.output.connect(panvol); fxChains.push(fx); }
       else inst.output.connect(panvol);
@@ -374,6 +383,38 @@ export async function renderBuffer(song, tailSec = 2.5) {
 
 export async function renderWav(song, tailSec = 2.5) { return audioBufferToWavBlob(await renderBuffer(song, tailSec)); }
 export async function renderMp3(song, kbps = 192, tailSec = 2.5) { return audioBufferToMp3Blob(await renderBuffer(song, tailSec), kbps); }
+
+// ---- stems ------------------------------------------------------------------
+// Render each audible track on its own, through the SAME master chain (volume +
+// reverb) and forced to the full mix length — so the stems line up sample-for-
+// sample and sum back to the mix. Muted tracks are skipped; if any track is
+// soloed, only the soloed tracks are exported (DAW semantics).
+export async function renderStems(song, tailSec = 2.5, onProgress = null) {
+  Tone.Transport.bpm.value = song.tempo;
+  let full = 0.5;
+  for (const t of song.tracks) full = Math.max(full, eventsForTrack(t).length);
+  const picked = song.tracks.map((t, i) => ({ t, i })).filter(({ t }) => trackAudible(song, t));
+  const stems = [];
+  let done = 0;
+  for (const { t, i } of picked) {
+    const solo = { ...song, tracks: [{ ...t, mute: false, solo: false }] };
+    const buffer = await renderBuffer(solo, tailSec, full);
+    stems.push({ index: i, name: t.name || `Track ${i + 1}`, buffer });
+    done++;
+    if (onProgress) try { onProgress(done, picked.length, t.name); } catch (e) {}
+  }
+  return stems;
+}
+// One track only (by index), full mix length. For agents that want a single stem.
+export async function renderStemWav(song, trackIndex, tailSec = 2.5) {
+  Tone.Transport.bpm.value = song.tempo;
+  let full = 0.5;
+  for (const t of song.tracks) full = Math.max(full, eventsForTrack(t).length);
+  const track = song.tracks[trackIndex];
+  if (!track) throw new Error(`no track at index ${trackIndex}`);
+  const solo = { ...song, tracks: [{ ...track, mute: false, solo: false }] };
+  return audioBufferToWavBlob(await renderBuffer(solo, tailSec, full));
+}
 
 // float channel -> Int16Array
 function floatToInt16(data) {
@@ -405,7 +446,7 @@ function audioBufferToMp3Blob(ab, kbps) {
 }
 
 // Minimal 16-bit PCM WAV encoder (no deps).
-function audioBufferToWavBlob(ab) {
+export function audioBufferToWavBlob(ab) {
   const numCh = ab.numberOfChannels, len = ab.length, sr = ab.sampleRate;
   const bytes = 44 + len * numCh * 2;
   const buf = new ArrayBuffer(bytes), view = new DataView(buf);
