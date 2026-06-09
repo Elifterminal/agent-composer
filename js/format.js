@@ -116,8 +116,33 @@ function normalizeTrack(t, i) {
     volume: clampNum(t.volume, -60, 6, -8),
     pan: clampNum(t.pan, -1, 1, 0),
     mute: !!t.mute,
+    fx: normalizeFx(t.fx),
     notes: (Array.isArray(t.notes) ? t.notes : []).map(normalizeNote).filter(Boolean),
   };
+}
+
+// Per-track effects chain. Each entry is { type, ...params }; types are
+// whitelisted and the audio engine clamps params to safe ranges at build time
+// (e.g. delay feedback < 1, so a bad value can't blow up the render). Chain is
+// applied in order between the instrument and the track's pan/volume.
+const FX_TYPES = new Set(["filter", "delay", "pingpong", "distortion", "bitcrush", "chorus", "phaser", "tremolo", "reverb", "eq"]);
+function normalizeFx(arr) {
+  if (!Array.isArray(arr)) return [];
+  const out = [];
+  for (const fx of arr) {
+    if (!fx || typeof fx !== "object") continue;
+    const type = String(fx.type || "").toLowerCase();
+    if (!FX_TYPES.has(type)) continue;
+    const o = { type };
+    for (const [k, v] of Object.entries(fx)) {
+      if (k === "type") continue;
+      if (typeof v === "number" && Number.isFinite(v)) o[k] = v;
+      else if (typeof v === "string" && v.length <= 24) o[k] = v;       // e.g. filter "mode", delay "time"
+    }
+    out.push(o);
+    if (out.length >= 8) break;                                          // cap chain length
+  }
+  return out;
 }
 function normalizeNote(n) {
   if (n == null) return null;
@@ -150,6 +175,7 @@ export function songToMd(song) {
   for (const t of s.tracks) {
     const head = `## ${t.name} | ${t.instrument} | vol ${t.volume} pan ${t.pan}${t.mute ? " mute" : ""}`;
     lines.push(head);
+    if (t.fx && t.fx.length) lines.push(`> fx: ${JSON.stringify(t.fx)}`);
     const toks = t.notes.map((n) => {
       if (n.rest != null) return `r:${toneDurToMd(n.rest)}`;
       const pitch = Array.isArray(n.note) ? n.note.join("+") : n.note;
@@ -182,6 +208,10 @@ export function mdToSong(text) {
       try { song.instruments = JSON.parse(m[1]); } catch (e) { /* ignore bad block */ }
       continue;
     }
+    if (cur && (m = /^>\s*fx:\s*(\[.*\])\s*$/i.exec(line))) {
+      try { cur.fx = JSON.parse(m[1]); } catch (e) { /* ignore bad block */ }
+      continue;
+    }
     if (cur) parseNoteLine(line, cur);          // a pattern line belongs to current track
   }
   return normalizeSong(song);
@@ -189,7 +219,7 @@ export function mdToSong(text) {
 
 function parseTrackHeader(s) {
   const parts = s.split("|").map((x) => x.trim());
-  const t = { name: parts[0] || "Track", instrument: parts[1] || "Synth", volume: -8, pan: 0, mute: false, notes: [] };
+  const t = { name: parts[0] || "Track", instrument: parts[1] || "Synth", volume: -8, pan: 0, mute: false, fx: [], notes: [] };
   const opts = (parts[2] || "");
   const v = /vol\s*(-?[\d.]+)/i.exec(opts); if (v) t.volume = +v[1];
   const p = /pan\s*(-?[\d.]+)/i.exec(opts); if (p) t.pan = +p[1];

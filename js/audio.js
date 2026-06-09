@@ -49,8 +49,46 @@ export async function ensureSamplesLoaded(song) {
   await Promise.all(tasks);
 }
 
-const DRUMS = ["kick", "snare", "hat", "openhat", "clap", "tom", "ride", "crash"];
+const DRUMS = ["kick", "kick808", "sub", "snare", "rim", "clap", "hat", "openhat",
+  "tom", "lowtom", "hitom", "ride", "crash", "cowbell", "shaker", "tamb", "conga", "clave", "perc"];
 export function isDrumName(n) { return DRUMS.includes(String(n).toLowerCase()); }
+
+// ---- per-track effects ------------------------------------------------------
+// A track may declare `fx: [{type, ...params}]`. We build a chain of Tone
+// effect nodes (validated upstream in format.js) and clamp params HERE so a bad
+// value can't blow up the render — e.g. feedback is capped below 1 so a delay
+// can't run away. Each builder returns a Tone node; reverb exposes a `.ready`
+// promise the offline render awaits.
+const cl = (v, lo, hi, d) => { v = Number(v); return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
+const FX_BUILDERS = {
+  filter: (o) => new Tone.Filter({ type: ["lowpass", "highpass", "bandpass", "notch"].includes(o.mode || o.filterType) ? (o.mode || o.filterType) : "lowpass", frequency: cl(o.freq ?? o.frequency, 20, 18000, 800), Q: cl(o.q ?? o.Q, 0, 20, 1) }),
+  delay: (o) => new Tone.FeedbackDelay({ delayTime: o.time || "8n", feedback: cl(o.feedback, 0, 0.92, 0.3), wet: cl(o.wet, 0, 1, 0.3) }),
+  pingpong: (o) => new Tone.PingPongDelay({ delayTime: o.time || "8n", feedback: cl(o.feedback, 0, 0.92, 0.3), wet: cl(o.wet, 0, 1, 0.3) }),
+  distortion: (o) => new Tone.Distortion({ distortion: cl(o.amount ?? o.distortion, 0, 1, 0.4), wet: cl(o.wet, 0, 1, 1) }),
+  bitcrush: (o) => new Tone.BitCrusher({ bits: Math.round(cl(o.bits, 1, 16, 4)) }),
+  chorus: (o) => new Tone.Chorus({ frequency: cl(o.frequency, 0.05, 20, 1.5), delayTime: cl(o.delayTime, 1, 20, 3.5), depth: cl(o.depth, 0, 1, 0.7), wet: cl(o.wet, 0, 1, 0.5) }).start(),
+  phaser: (o) => new Tone.Phaser({ frequency: cl(o.frequency, 0.05, 20, 0.5), octaves: cl(o.octaves, 1, 6, 3), baseFrequency: cl(o.baseFrequency, 50, 2000, 350), wet: cl(o.wet, 0, 1, 0.5) }),
+  tremolo: (o) => new Tone.Tremolo({ frequency: cl(o.frequency, 0.1, 30, 9), depth: cl(o.depth, 0, 1, 0.7), wet: cl(o.wet, 0, 1, 0.8) }).start(),
+  reverb: (o) => new Tone.Reverb({ decay: cl(o.decay, 0.1, 10, 1.8), wet: cl(o.wet, 0, 1, 0.3) }),
+  eq: (o) => new Tone.EQ3({ low: cl(o.low, -24, 12, 0), mid: cl(o.mid, -24, 12, 0), high: cl(o.high, -24, 12, 0) }),
+};
+// Returns { input, output, ready(), dispose() } or null for an empty/invalid chain.
+function buildFxChain(fxList) {
+  if (!Array.isArray(fxList) || !fxList.length) return null;
+  const nodes = [];
+  for (const fx of fxList) {
+    const b = FX_BUILDERS[String(fx && fx.type).toLowerCase()];
+    if (b) { try { nodes.push(b(fx || {})); } catch (e) { /* skip bad fx */ } }
+  }
+  if (!nodes.length) return null;
+  for (let i = 0; i < nodes.length - 1; i++) nodes[i].connect(nodes[i + 1]);
+  const readies = nodes.map((n) => n.ready).filter((p) => p && typeof p.then === "function");
+  return {
+    input: nodes[0], output: nodes[nodes.length - 1],
+    ready: () => Promise.all(readies),
+    dispose: () => nodes.forEach((n) => { try { n.dispose(); } catch (e) {} }),
+  };
+}
 
 // Catalog for the UI: every synth preset (grouped) + the drum kit.
 export const INSTRUMENTS = [
@@ -145,32 +183,60 @@ function makeCustomInstrument(id, def) {
   };
 }
 
+// A fuller synthesized kit: punchy + 808-style kicks, layered snare (body +
+// noise), rim, clap, three toms, hats, ride/crash, and hand percussion
+// (cowbell, shaker, tambourine, conga, clave, generic perc). All synthesized —
+// no samples, so it renders offline instantly and ships nothing copyrighted.
 function makeDrumKit() {
   const out = new Tone.Gain(1);
-  const kick = new Tone.MembraneSynth({ octaves: 6, pitchDecay: 0.05 }).connect(out);
+  const noise = (decay, type = "white") => new Tone.NoiseSynth({ noise: { type }, envelope: { attack: 0.001, decay, sustain: 0 } }).connect(out);
+
+  const kick = new Tone.MembraneSynth({ octaves: 6, pitchDecay: 0.045 }).connect(out);
+  const kick808 = new Tone.MembraneSynth({ octaves: 8, pitchDecay: 0.12, envelope: { attack: 0.001, decay: 0.6, sustain: 0.02, release: 0.6 } }).connect(out);
   const tom = new Tone.MembraneSynth({ octaves: 4, pitchDecay: 0.08 }).connect(out);
-  const snare = new Tone.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 0.001, decay: 0.18, sustain: 0 } }).connect(out);
-  const clap = new Tone.NoiseSynth({ noise: { type: "pink" }, envelope: { attack: 0.002, decay: 0.12, sustain: 0 } }).connect(out);
-  const hat = new Tone.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 0.001, decay: 0.04, sustain: 0 } }).connect(out);
-  const openhat = new Tone.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 0.001, decay: 0.3, sustain: 0 } }).connect(out);
+  // snare = tonal body + noise crack
+  const snareBody = new Tone.MembraneSynth({ octaves: 3, pitchDecay: 0.02, envelope: { attack: 0.001, decay: 0.12, sustain: 0 } }).connect(out);
+  const snareNoise = noise(0.18);
+  const rim = noise(0.03, "white");
+  const clap = noise(0.12, "pink");
+  const hat = noise(0.035);
+  const openhat = noise(0.32);
   const metal = new Tone.MetalSynth({ harmonicity: 5.1, resonance: 4000, octaves: 1.5 }).connect(out);
+  const cowbell = new Tone.MetalSynth({ harmonicity: 8, resonance: 800, octaves: 0.5, envelope: { attack: 0.001, decay: 0.15, release: 0.05 } }).connect(out);
+  const shaker = noise(0.04);
+  const tamb = new Tone.MetalSynth({ harmonicity: 12, resonance: 6000, octaves: 1, envelope: { attack: 0.001, decay: 0.08, release: 0.02 } }).connect(out);
+  const conga = new Tone.MembraneSynth({ octaves: 2, pitchDecay: 0.03, envelope: { attack: 0.001, decay: 0.2, sustain: 0 } }).connect(out);
+  const clave = new Tone.MembraneSynth({ octaves: 1, pitchDecay: 0.005, envelope: { attack: 0.001, decay: 0.05, sustain: 0 } }).connect(out);
+
   const map = {
     kick: (t, v) => kick.triggerAttackRelease("C1", "8n", t, v),
+    kick808: (t, v) => kick808.triggerAttackRelease("A0", "2n", t, v),
+    sub: (t, v) => kick808.triggerAttackRelease("F0", "2n", t, v),       // alias
     tom: (t, v) => tom.triggerAttackRelease("G2", "8n", t, v),
-    snare: (t, v) => snare.triggerAttackRelease("16n", t, v),
+    lowtom: (t, v) => tom.triggerAttackRelease("D2", "8n", t, v),
+    hitom: (t, v) => tom.triggerAttackRelease("C3", "8n", t, v),
+    snare: (t, v) => { snareBody.triggerAttackRelease("G2", "16n", t, v * 0.8); snareNoise.triggerAttackRelease("16n", t, v); },
+    rim: (t, v) => rim.triggerAttackRelease("32n", t, v * 0.8),
     clap: (t, v) => clap.triggerAttackRelease("16n", t, v),
     hat: (t, v) => hat.triggerAttackRelease("32n", t, v * 0.7),
     openhat: (t, v) => openhat.triggerAttackRelease("8n", t, v * 0.6),
-    ride: (t, v) => metal.triggerAttackRelease("32n", t, v * 0.4),
-    crash: (t, v) => metal.triggerAttackRelease("4n", t, v * 0.5),
+    ride: (t, v) => metal.triggerAttackRelease("C6", "32n", t, v * 0.4),
+    crash: (t, v) => metal.triggerAttackRelease("C5", "4n", t, v * 0.5),
+    cowbell: (t, v) => cowbell.triggerAttackRelease("G#4", "16n", t, v * 0.5),
+    shaker: (t, v) => shaker.triggerAttackRelease("32n", t, v * 0.5),
+    tamb: (t, v) => tamb.triggerAttackRelease("C7", "32n", t, v * 0.5),
+    conga: (t, v) => conga.triggerAttackRelease("A2", "16n", t, v * 0.8),
+    clave: (t, v) => clave.triggerAttackRelease("C5", "32n", t, v * 0.7),
+    perc: (t, v) => clave.triggerAttackRelease("A4", "32n", t, v * 0.7),
   };
+  const all = [kick, kick808, tom, snareBody, snareNoise, rim, clap, hat, openhat, metal, cowbell, shaker, tamb, conga, clave, out];
   return {
     output: out,
     trigger: (note, _dur, time, vel) => {
       const fn = map[String(note).toLowerCase()];
       if (fn) try { fn(time, vel ?? 0.85); } catch (e) {}
     },
-    dispose: () => { [kick, tom, snare, clap, hat, openhat, metal, out].forEach((n) => n.dispose()); },
+    dispose: () => all.forEach((n) => { try { n.dispose(); } catch (e) {} }),
   };
 }
 
@@ -233,7 +299,9 @@ export function buildEngine(song) {
   for (const track of song.tracks) {
     const inst = makeInstrument(track.instrument, song.instruments);
     const panvol = new Tone.PanVol(track.pan, track.mute ? -Infinity : track.volume);
-    inst.output.connect(panvol);
+    const fx = buildFxChain(track.fx);
+    if (fx) { inst.output.connect(fx.input); fx.output.connect(panvol); insts.push(fx); }
+    else inst.output.connect(panvol);
     panvol.connect(reverb);
     insts.push(inst); insts.push({ dispose: () => panvol.dispose() });
     const { events, length: tl } = eventsForTrack(track);
@@ -277,12 +345,16 @@ export async function renderBuffer(song, tailSec = 2.5) {
     await reverb.ready;
     // create all instruments first (samplers begin loading), then wait for all
     // sample buffers before scheduling so nothing renders silent.
+    const fxChains = [];
     const built = song.tracks.map((track) => {
       const inst = makeInstrument(track.instrument, song.instruments);
       const panvol = new Tone.PanVol(track.pan, track.mute ? -Infinity : track.volume).connect(reverb);
-      inst.output.connect(panvol);
+      const fx = buildFxChain(track.fx);
+      if (fx) { inst.output.connect(fx.input); fx.output.connect(panvol); fxChains.push(fx); }
+      else inst.output.connect(panvol);
       return { inst, track };
     });
+    await Promise.all(fxChains.map((f) => f.ready()));    // reverb IRs etc.
     await Tone.loaded();
     for (const { inst, track } of built) {
       for (const ev of eventsForTrack(track).events) inst.trigger(ev.note, ev.dur, ev.time, ev.vel);

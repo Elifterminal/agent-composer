@@ -121,9 +121,16 @@ Back-compat ids (`Synth FMSynth AMSynth MonoSynth DuoSynth`) still work.
 block: a `sampler` (load any multisample/one-shot) or a `slicer` (chop a sample
 into slices and re-sequence them — e.g. a breakbeat). See SPEC.md.
 
-**`drumkit`** — layer drums on separate tracks (one each for kick/snare/hats).
-Drum names: `kick snare hat openhat clap tom ride crash`; the duration sets the
-step (`kick:4 hat:8 hat:8 snare:4`).
+**`drumkit`** — a full synthesized kit triggered by name; the duration sets the
+step (`kick:4 hat:8 hat:8 snare:4`). Names: kicks `kick kick808 sub`, snare/clap
+`snare rim clap`, cymbals `hat openhat ride crash`, toms `tom lowtom hitom`, hand
+perc `cowbell shaker tamb conga clave perc`. Layer across tracks or sequence on
+one.
+
+**Per-track effects** — give any track an `fx` chain: `filter delay pingpong
+distortion bitcrush chorus phaser tremolo reverb eq`. They apply in order between
+the instrument and the track fader; params are clamped to safe ranges. See
+SPEC.md for the parameter table.
 
 ## Files
 

@@ -25,6 +25,7 @@ values are clamped rather than rejected.
 | `volume` | number | `-8` | dB |
 | `pan` | number | `0` | −1 (L) … 1 (R) |
 | `mute` | boolean | `false` | |
+| `fx` | Fx[] | `[]` | per-track effect chain (see below) |
 | `notes` | Note[] | `[]` | played sequentially |
 
 ### Note
@@ -38,7 +39,7 @@ A pitched note, a chord, or a rest:
 ```
 
 - `note` — scientific pitch (`C4`, `F#5`, `Bb2`) or an array for chords. For a
-  `drumkit` track, use a drum name: `kick snare hat openhat clap tom ride crash`.
+  `drumkit` track, use a drum name (see the kit below).
 - `dur` — Tone.js note value: `1n 2n 4n 8n 16n 32n`, dotted `4n.`, triplet
   `8t`. (`duration` is accepted as an alias.)
 - `vel` — velocity 0–1 (default `0.85`; `velocity` accepted as alias).
@@ -105,6 +106,62 @@ duration can't be parsed is skipped.
   time signature and drawn with tolerant (soft) voices. Drum tracks are drawn on
   the middle line as a rhythm guide.
 - No tempo automation, ties across barlines, or per-note articulation yet.
+
+## Drum kit (`drumkit` instrument)
+
+A `drumkit` track triggers synthesized percussion by name (the `dur` sets the
+step length, not the sound). All sounds are synthesized — nothing sampled, so
+the kit renders offline instantly and ships nothing copyrighted.
+
+| group | names |
+|-------|-------|
+| kicks | `kick` (punchy), `kick808` / `sub` (long 808) |
+| snare/clap | `snare` (body+noise), `rim`, `clap` |
+| hats/cymbals | `hat`, `openhat`, `ride`, `crash` |
+| toms | `tom`, `lowtom`, `hitom` |
+| hand perc | `cowbell`, `shaker`, `tamb`, `conga`, `clave`, `perc` |
+
+Layer drums across separate tracks (one per voice) or sequence them on one
+track — e.g. `kick808:4 hat:8 shaker:8 snare:4 cowbell:8 hat:8`.
+
+## Per-track effects (`fx`)
+
+A track may carry an `fx` array — an ordered chain of effect nodes inserted
+between the instrument and the track's pan/volume. Each entry is
+`{ "type": "...", ...params }`. Unknown types are dropped; params are clamped to
+safe ranges at build time (e.g. delay `feedback` is capped below 1 so it can't
+run away), and the chain is capped at 8 nodes.
+
+| type | params (defaults) |
+|------|-------------------|
+| `filter` | `mode` `lowpass`\|`highpass`\|`bandpass`\|`notch` (`lowpass`), `freq` (800), `q` (1) |
+| `delay` | `time` (`8n`), `feedback` (0.3, max 0.92), `wet` (0.3) |
+| `pingpong` | `time` (`8n`), `feedback` (0.3, max 0.92), `wet` (0.3) |
+| `distortion` | `amount` 0–1 (0.4), `wet` (1) |
+| `bitcrush` | `bits` 1–16 (4) |
+| `chorus` | `frequency` (1.5), `delayTime` (3.5), `depth` (0.7), `wet` (0.5) |
+| `phaser` | `frequency` (0.5), `octaves` (3), `baseFrequency` (350), `wet` (0.5) |
+| `tremolo` | `frequency` (9), `depth` (0.7), `wet` (0.8) |
+| `reverb` | `decay` (1.8), `wet` (0.3) |
+| `eq` | `low` `mid` `high` dB (0) |
+
+```json
+"tracks": [
+  { "name": "Stab", "instrument": "supersaw",
+    "fx": [ { "type": "filter", "mode": "lowpass", "freq": 1200, "q": 4 },
+            { "type": "pingpong", "time": "8n.", "feedback": 0.55, "wet": 0.4 } ],
+    "notes": [ { "note": ["A3","C4","E4"], "dur": "8n" } ] }
+]
+```
+
+In Markdown, an `fx` chain rides on a `> fx: [...]` line directly under the
+track header:
+
+```md
+## Stab | supersaw | vol -12
+> fx: [{"type":"filter","mode":"lowpass","freq":1200,"q":4},{"type":"pingpong","time":"8n.","feedback":0.55}]
+A3+C4+E4:8 r:8
+```
 
 ## Custom instruments (agent-defined)
 

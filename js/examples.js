@@ -62,6 +62,30 @@ export const EXAMPLES = [
     },
   },
   {
+    name: "Dub Echo (per-track fx)",
+    song: {
+      title: "Dub Echo", tempo: 140, timeSignature: "4/4", swing: 0,
+      master: { volume: -6, reverb: 0.3 },
+      tracks: [
+        // stab through a lowpass + ping-pong delay = classic dub
+        { name: "Stab", instrument: "supersaw", volume: -12, pan: 0,
+          fx: [ { type: "filter", mode: "lowpass", freq: 1200, q: 4 }, { type: "pingpong", time: "8n.", feedback: 0.55, wet: 0.4 } ],
+          notes: [
+            {note:["A3","C4","E4"],dur:"8n"},{rest:"8n"},{rest:"4n"},{rest:"2n"},
+            {note:["G3","B3","D4"],dur:"8n"},{rest:"8n"},{rest:"4n"},{rest:"2n"} ] },
+        { name: "Bass", instrument: "sub-bass", volume: -5, pan: 0,
+          fx: [ { type: "distortion", amount: 0.2, wet: 0.5 } ],
+          notes: [ {note:"A1",dur:"2n"},{note:"A1",dur:"4n"},{note:"E2",dur:"4n"},
+                   {note:"G1",dur:"2n"},{note:"G1",dur:"4n"},{note:"D2",dur:"4n"} ] },
+        { name: "Drums", instrument: "drumkit", volume: -5, pan: 0,
+          fx: [ { type: "bitcrush", bits: 6 } ],
+          notes: [
+            {note:"kick",dur:"4n"},{note:"shaker",dur:"8n"},{note:"hat",dur:"8n"},{note:"snare",dur:"4n"},{note:"shaker",dur:"8n"},{note:"openhat",dur:"8n"},
+            {note:"kick808",dur:"4n"},{note:"hat",dur:"8n"},{note:"rim",dur:"8n"},{note:"snare",dur:"4n"},{note:"cowbell",dur:"8n"},{note:"hat",dur:"8n"} ] },
+      ],
+    },
+  },
+  {
     name: "Chopped Break (slicer)",
     song: {
       title: "Chopped", tempo: 170, timeSignature: "4/4", swing: 0,
