@@ -116,10 +116,12 @@ export function buildEngine(song) {
 }
 
 // Offline-render the whole song to a native AudioBuffer (stereo, 44.1 kHz).
-export async function renderBuffer(song) {
+// tailSec adds time past the last note for reverb/releases to ring out; pass 0
+// for a seamless loop (render is then exactly the musical length).
+export async function renderBuffer(song, tailSec = 2.5) {
   let length = 0.5;
   for (const t of song.tracks) length = Math.max(length, eventsForTrack(t).length);
-  const tail = 2.5; // let reverb / releases ring out
+  const tail = Math.max(0, tailSec);
 
   const buffer = await Tone.Offline(async () => {
     Tone.Transport.bpm.value = song.tempo;
@@ -138,8 +140,8 @@ export async function renderBuffer(song) {
   return buffer.get(); // native AudioBuffer
 }
 
-export async function renderWav(song) { return audioBufferToWavBlob(await renderBuffer(song)); }
-export async function renderMp3(song, kbps = 192) { return audioBufferToMp3Blob(await renderBuffer(song), kbps); }
+export async function renderWav(song, tailSec = 2.5) { return audioBufferToWavBlob(await renderBuffer(song, tailSec)); }
+export async function renderMp3(song, kbps = 192, tailSec = 2.5) { return audioBufferToMp3Blob(await renderBuffer(song, tailSec), kbps); }
 
 // float channel -> Int16Array
 function floatToInt16(data) {

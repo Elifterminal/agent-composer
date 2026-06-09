@@ -20,7 +20,9 @@ Open `index.html` (or the hosted Pages URL). Pick a preset, hit **▶ Play**.
 Then edit the score in the **JSON** or **Markdown** tab and play again. `⇄
 convert` rewrites the active editor into the other format. **🎼 Engrave** draws
 the sheet music; **💾 WAV** and **💾 MP3** render audio (MP3 is 192 kbps CBR via
-lamejs); **⬇ .json / ⬇ .md** download the score.
+lamejs); **⬇ .json / ⬇ .md** download the score. Tick **loop** before exporting
+to render a **seamless loop** — the render is trimmed to the exact bar length
+(no reverb tail) so end meets beginning cleanly.
 
 ## Render headlessly (for agents / automation)
 

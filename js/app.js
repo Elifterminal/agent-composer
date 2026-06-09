@@ -108,15 +108,16 @@ els.sheetBtn.addEventListener("click", () => { const s = getSong(); if (s) rende
 
 async function exportAudio(btn, label, ext, renderFn) {
   const song = getSong(); if (!song) return;
+  const tail = els.loop.checked ? 0 : 2.5;   // "loop" checked => seamless export (no reverb tail)
   btn.disabled = true; const orig = btn.textContent; btn.textContent = "⏳ rendering…";
   try {
     await Tone.start();
-    download(await renderFn(song), `${slug(song.title)}.${ext}`);
+    download(await renderFn(song, tail), `${slug(song.title)}${tail === 0 ? "-loop" : ""}.${ext}`);
   } catch (e) { showError(`${label} render failed: ` + e.message); }
   btn.disabled = false; btn.textContent = orig;
 }
-els.wavBtn.addEventListener("click", () => exportAudio(els.wavBtn, "WAV", "wav", renderWav));
-els.mp3Btn.addEventListener("click", () => exportAudio(els.mp3Btn, "MP3", "mp3", (s) => renderMp3(s, 192)));
+els.wavBtn.addEventListener("click", () => exportAudio(els.wavBtn, "WAV", "wav", (s, t) => renderWav(s, t)));
+els.mp3Btn.addEventListener("click", () => exportAudio(els.mp3Btn, "MP3", "mp3", (s, t) => renderMp3(s, 192, t)));
 els.jsonBtn.addEventListener("click", () => { const s = getSong(); if (s) download(new Blob([songToJson(s)], { type: "application/json" }), `${slug(s.title)}.json`); });
 els.mdBtn.addEventListener("click", () => { const s = getSong(); if (s) download(new Blob([songToMd(s)], { type: "text/markdown" }), `${slug(s.title)}.md`); });
 
@@ -136,8 +137,8 @@ function safeSong() { try { return fmt === "json" ? jsonToSong(els.json.value) :
 // Pure rendering helpers; safe to call from the console.
 window.AgentScore = {
   jsonToSong, mdToSong, songToJson, songToMd, normalizeSong,
-  async renderWavBlob(text, isMd = false) { await Tone.start(); return renderWav(parseText(text, isMd)); },
-  async renderMp3Blob(text, isMd = false, kbps = 192) { await Tone.start(); return renderMp3(parseText(text, isMd), kbps); },
+  async renderWavBlob(text, isMd = false, tailSec = 2.5) { await Tone.start(); return renderWav(parseText(text, isMd), tailSec); },
+  async renderMp3Blob(text, isMd = false, kbps = 192, tailSec = 2.5) { await Tone.start(); return renderMp3(parseText(text, isMd), kbps, tailSec); },
 };
 function parseText(text, isMd) { return isMd ? mdToSong(text) : jsonToSong(text); }
 
