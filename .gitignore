@@ -1,3 +1,5 @@
 .DS_Store
-*.wav
 node_modules/
+# stray render outputs (but bundled sample assets under samples/ are kept)
+/*.wav
+/*.mp3
