@@ -1,6 +1,6 @@
 // app.js — wires the editors, transport, sheet engraver and exporters together.
 import { jsonToSong, songToJson, mdToSong, songToMd, normalizeSong } from "./format.js";
-import { buildEngine, renderWav, renderMp3 } from "./audio.js";
+import { buildEngine, renderWav, renderMp3, INSTRUMENTS, probeInstruments } from "./audio.js";
 import { renderSheet } from "./sheet.js";
 import { EXAMPLES } from "./examples.js";
 
@@ -137,6 +137,7 @@ function safeSong() { try { return fmt === "json" ? jsonToSong(els.json.value) :
 // Pure rendering helpers; safe to call from the console.
 window.AgentScore = {
   jsonToSong, mdToSong, songToJson, songToMd, normalizeSong,
+  instruments: INSTRUMENTS, probeInstruments,
   async renderWavBlob(text, isMd = false, tailSec = 2.5) { await Tone.start(); return renderWav(parseText(text, isMd), tailSec); },
   async renderMp3Blob(text, isMd = false, kbps = 192, tailSec = 2.5) { await Tone.start(); return renderMp3(parseText(text, isMd), kbps, tailSec); },
 };

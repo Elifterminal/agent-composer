@@ -1,31 +1,43 @@
 // audio.js — Tone.js playback + offline WAV render for an AgentScore song.
 // Tone is loaded globally from the CDN.
+import { SYNTHS, instrumentList } from "./instruments.js";
 const Tone = window.Tone;
 
-// melodic instruments are PolySynth-wrapped so chords work; "drumkit" is special.
-export const INSTRUMENTS = [
-  { id: "Synth", label: "Synth — clean" },
-  { id: "FMSynth", label: "FM — bell / metallic" },
-  { id: "AMSynth", label: "AM — tremolo" },
-  { id: "MonoSynth", label: "Mono — fat bass / lead" },
-  { id: "DuoSynth", label: "Duo — detuned pad" },
-  { id: "drumkit", label: "Drum Kit" },
-];
 const DRUMS = ["kick", "snare", "hat", "openhat", "clap", "tom", "ride", "crash"];
 export function isDrumName(n) { return DRUMS.includes(String(n).toLowerCase()); }
+
+// Catalog for the UI: every synth preset (grouped) + the drum kit.
+export const INSTRUMENTS = [
+  ...instrumentList(),
+  { id: "drumkit", label: "Drum Kit", cat: "Drums", family: "drums" },
+];
+export function instrumentLabel(id) {
+  if (id === "drumkit") return "Drum Kit";
+  return SYNTHS[id]?.label || id;
+}
 
 // Build an instrument. Returns { output, trigger(note,durSec,time,vel), dispose }.
 function makeInstrument(name) {
   if (name === "drumkit") return makeDrumKit();
-  const Ctor = Tone[name] || Tone.Synth;
-  const poly = new Tone.PolySynth(Ctor);
-  poly.volume.value = -2;
+  const def = SYNTHS[name] || SYNTHS["synth"];
+  const Ctor = Tone[def.ctor] || Tone.Synth;
+  let node, kind = "default";
+  if (def.ctor === "PluckSynth") { node = new Ctor(def.opts || {}); kind = "pluck"; }
+  else if (def.isNoise) { node = new Ctor(def.opts || {}); kind = "noise"; }
+  else if (def.mono) { node = new Ctor(def.opts || {}); kind = "default"; }
+  else { node = new Tone.PolySynth(Ctor, def.opts || {}); }
+  if (typeof def.gain === "number" && node.volume) node.volume.value = def.gain;
   return {
-    output: poly,
+    output: node,
     trigger: (note, durSec, time, vel) => {
-      try { poly.triggerAttackRelease(note, durSec, time, vel); } catch (e) { /* bad note name */ }
+      try {
+        if (kind === "noise") node.triggerAttackRelease(durSec, time, vel);
+        else if (kind === "pluck") {
+          (Array.isArray(note) ? note : [note]).forEach((n) => node.triggerAttack(n, time, vel));
+        } else node.triggerAttackRelease(note, durSec, time, vel);
+      } catch (e) { /* bad note / unsupported */ }
     },
-    dispose: () => poly.dispose(),
+    dispose: () => node.dispose(),
   };
 }
 
@@ -56,6 +68,20 @@ function makeDrumKit() {
     },
     dispose: () => { [kick, tom, snare, clap, hat, openhat, metal, out].forEach((n) => n.dispose()); },
   };
+}
+
+// Diagnostic: construct + trigger every instrument once, report failures.
+export function probeInstruments() {
+  const res = [];
+  for (const it of INSTRUMENTS) {
+    try {
+      const inst = makeInstrument(it.id);
+      inst.trigger(it.id === "drumkit" ? "kick" : "C4", 0.2, Tone.now() + 0.02, 0.4);
+      setTimeout(() => { try { inst.dispose(); } catch (e) {} }, 500);
+      res.push({ id: it.id, ok: true });
+    } catch (e) { res.push({ id: it.id, ok: false, err: String(e && e.message || e) }); }
+  }
+  return res;
 }
 
 // Convert a track's notes (sequential) into timed events in seconds (bpm-aware).
