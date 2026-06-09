@@ -6,6 +6,7 @@ import { renderPalette, renderLanes } from "./ui.js";
 import { songToMidiBlob } from "./midi.js";
 import { lintSong } from "./lint.js";
 import { createSequencer } from "./sequencer.js";
+import { abcToSong } from "./abc.js";
 import { EXAMPLES } from "./examples.js";
 
 const INST_CAT = Object.fromEntries(INSTRUMENTS.map((i) => [i.id, i.cat]));
@@ -15,8 +16,8 @@ const $ = (id) => document.getElementById(id);
 const els = {
   ex: $("ex"), play: $("play"), stop: $("stop"), loop: $("loop"),
   sheetBtn: $("sheetBtn"), checkBtn: $("checkBtn"), wavBtn: $("wavBtn"), mp3Btn: $("mp3Btn"), midiBtn: $("midiBtn"), jsonBtn: $("jsonBtn"), mdBtn: $("mdBtn"),
-  tabJson: $("tabJson"), tabMd: $("tabMd"), convert: $("convert"),
-  json: $("json"), md: $("md"), error: $("error"), readout: $("readout"),
+  tabJson: $("tabJson"), tabMd: $("tabMd"), tabAbc: $("tabAbc"), convert: $("convert"),
+  json: $("json"), md: $("md"), abc: $("abc"), error: $("error"), readout: $("readout"),
   viz: $("viz"), sheet: $("sheet"), lanes: $("lanes"), palette: $("palette"),
   seqMount: $("seqMount"), seqLoad: $("seqLoad"),
 };
@@ -51,10 +52,12 @@ function loadSong(song) {
 // parse whichever editor is active -> normalized song (or null + error)
 function getSong() {
   try {
-    const song = fmt === "json" ? jsonToSong(els.json.value) : mdToSong(els.md.value);
+    const song = fmt === "json" ? jsonToSong(els.json.value)
+      : fmt === "md" ? mdToSong(els.md.value)
+      : normalizeSong(abcToSong(els.abc.value));        // ABC is import-only
     clearError(); setReadout(song); return song;
   } catch (e) {
-    showError((fmt === "json" ? "JSON error: " : "Markdown error: ") + e.message);
+    showError((fmt === "json" ? "JSON error: " : fmt === "md" ? "Markdown error: " : "ABC error: ") + e.message);
     return null;
   }
 }
@@ -62,18 +65,27 @@ function getSong() {
 // ---------- tabs / convert ----------
 function setFmt(next) {
   if (next === fmt) return;
-  // convert current editor into the other format before switching
+  // convert current editor into the JSON/MD editors before switching (ABC is
+  // import-only, so we never generate ABC — switching to it just shows its box)
   const song = getSong();
   if (song) { els.json.value = songToJson(song); els.md.value = songToMd(song); }
   fmt = next;
   els.tabJson.classList.toggle("active", fmt === "json");
   els.tabMd.classList.toggle("active", fmt === "md");
+  els.tabAbc.classList.toggle("active", fmt === "abc");
   els.json.hidden = fmt !== "json";
   els.md.hidden = fmt !== "md";
+  els.abc.hidden = fmt !== "abc";
 }
 els.tabJson.addEventListener("click", () => setFmt("json"));
 els.tabMd.addEventListener("click", () => setFmt("md"));
-els.convert.addEventListener("click", () => { const s = getSong(); if (s) { els.json.value = songToJson(s); els.md.value = songToMd(s); } });
+els.tabAbc.addEventListener("click", () => setFmt("abc"));
+els.convert.addEventListener("click", () => {
+  const s = getSong(); if (!s) return;
+  els.json.value = songToJson(s); els.md.value = songToMd(s);
+  if (fmt === "abc") setFmt("json");          // show the imported result
+  try { renderSheet(els.sheet, s, s.timeSignature); } catch (e) {}
+});
 
 // ---------- transport ----------
 async function play() {
@@ -152,7 +164,7 @@ function download(blob, name) {
 function slug(s) { return (s || "song").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "song"; }
 
 window.addEventListener("resize", () => { const s = safeSong(); if (s) renderSheet(els.sheet, s, s.timeSignature); });
-function safeSong() { try { return fmt === "json" ? jsonToSong(els.json.value) : mdToSong(els.md.value); } catch { return null; } }
+function safeSong() { try { return fmt === "json" ? jsonToSong(els.json.value) : fmt === "md" ? mdToSong(els.md.value) : normalizeSong(abcToSong(els.abc.value)); } catch { return null; } }
 
 // ---------- programmatic API ----------
 // Lets an agent / automation render headlessly and capture the bytes directly
@@ -165,6 +177,7 @@ window.AgentScore = {
   async renderMp3Blob(text, isMd = false, kbps = 192, tailSec = 2.5) { await Tone.start(); return renderMp3(parseText(text, isMd), kbps, tailSec); },
   renderMidiBlob(text, isMd = false) { return songToMidiBlob(parseText(text, isMd)); },
   lint(text, isMd = false) { return lintSong(parseText(text, isMd)); },
+  abcToSong(abcText) { return normalizeSong(abcToSong(abcText)); },   // ABC notation -> Song
 };
 function parseText(text, isMd) { return isMd ? mdToSong(text) : jsonToSong(text); }
 

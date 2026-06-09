@@ -170,6 +170,36 @@ track header:
 A3+C4+E4:8 r:8
 ```
 
+## ABC notation import
+
+AgentScore can read [ABC notation](https://abcnotation.com/) and convert it to a
+Song (one-way: ABC → JSON). ABC is the terse, established text notation that
+LLMs already know, so it's a fast way for an agent to enter *notation*, which the
+JSON layer then turns into *production*.
+
+`AgentScore.abcToSong(abcText)` → a normalized Song. In the UI, the **ABC** tab +
+**⇄ convert** does the same. Each ABC voice becomes a track (default instrument
+`piano`); tempo, meter, and title carry over.
+
+Supported subset:
+
+| ABC | handled |
+|-----|---------|
+| header fields | `T` title, `M` meter (incl. `C`, `C\|`), `L` unit length, `Q` tempo (`1/4=120` or bare), `K` key, `V` voices |
+| key signatures | majors + modes (`Dor Mix Min Lyd Phr Aeo Loc`), e.g. `K:Ador`, `K:Bb` |
+| accidentals | `^ ^^ _ __ =` with per-bar memory; key signature otherwise |
+| octaves | `C, , ` (down) and `c '` (up) |
+| lengths | `A2`, `A/2`, `A/`, `A3/2`, `A//` |
+| rhythm | dotted/broken `>` `<`; tuplets `(3` `(5` … (with standard `q` defaults) |
+| grouping | chords `[CEG]`, rests `z x Z X` |
+| structure | barlines, `\|: :\|` repeats, `\|1`/`\|2` (and `[1`/`[2`) endings, multiple voices |
+
+Ignored (no audio effect): slurs `( )`, ties `-`, grace notes `{}`, decorations
+`! !` / `+ +`, chord-symbol annotations `"…"`, lyrics `w:`. Durations are snapped
+to the note-value vocabulary; notes longer than a whole note become repeated
+whole notes (no ties). ABC export is **not** provided — ABC can't represent the
+production layer (fx, sampler/slicer, mixing), so round-tripping would lose it.
+
 ## Custom instruments (agent-defined)
 
 A song may declare its own instruments in a top-level `instruments` map; tracks

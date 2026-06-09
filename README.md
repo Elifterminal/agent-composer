@@ -36,6 +36,7 @@ const wav = await AgentScore.renderWavBlob(jsonText);          // or (mdText, tr
 const mp3 = await AgentScore.renderMp3Blob(jsonText, false, 192);
 const mid = AgentScore.renderMidiBlob(jsonText);               // Standard MIDI File
 const report = AgentScore.lint(jsonText);                      // { ok, errors, warnings, info }
+const song = AgentScore.abcToSong(abcText);                    // import ABC notation -> Song
 // also: jsonToSong, mdToSong, songToJson, songToMd, normalizeSong
 ```
 
@@ -67,6 +68,22 @@ tracks the beat while it plays. **↻ from score** loads the current score back
 onto the grid (for grid-uniform patterns). Agents don't need any of this — they
 write the score directly — but it's there so a human can sketch a groove fast or
 see what an agent laid down.
+
+## Import ABC notation
+
+There's a third input: **ABC notation** — the compact, decades-old text format
+that's all over an LLM's training data, so an agent can sketch a tune in ABC
+*from memory* and let AgentScore enrich it with the JSON production layer
+(instruments, effects, mixing). Paste ABC into the **ABC** tab and hit **⇄
+convert** (or call `AgentScore.abcToSong(abcText)`); it imports into the score as
+JSON, after which everything else applies. It's **one-way** (ABC → score): ABC is
+notation, not production, so we read it in and you take it from there.
+
+Supported: header fields (`T M L Q K V`), key signatures + modes, accidentals
+with per-bar memory, octave marks, note lengths and `/` fractions, dotted/broken
+rhythm (`> <`), tuplets (`(3`…), chords `[CEG]`, rests, `|: :|` repeats with
+1st/2nd endings, and multiple voices → separate tracks. (Slurs, ties, grace
+notes, decorations and lyrics are ignored.)
 
 ## Compose as an agent
 
@@ -173,6 +190,7 @@ js/instruments.js instrument catalog (synth presets + sampled maps)
 js/audio.js       Tone.js engine, sample loader, transport, WAV/MP3 render
 js/sheet.js       VexFlow sheet-music transcriber
 js/midi.js        Standard MIDI File exporter
+js/abc.js         ABC-notation importer (ABC -> Song)
 js/ui.js          instrument palette + track-lane visualizer
 js/sequencer.js   matrix step sequencer (compiles to the song)
 js/lint.js        song validator (agent feedback)
