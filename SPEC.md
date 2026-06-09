@@ -96,9 +96,14 @@ duration can't be parsed is skipped.
 - **WAV** — offline render of the whole song (44.1 kHz, 16-bit stereo) including
   master reverb tail.
 - **MP3** — same render, encoded to 192 kbps CBR (lamejs).
+- **MIDI** — Standard MIDI File (format 1, 192 PPQ): one MIDI track per song
+  track, `drumkit` tracks mapped to GM drums on channel 10, tempo + time
+  signature in a conductor track. Notes/chords/rests and velocities are
+  preserved; per-track `fx` and synth choice are not (MIDI carries no audio).
 - **.json / .md** — the score itself, in either format.
-- **Programmatic**: `window.AgentScore.renderWavBlob(text, isMd?)` and
-  `renderMp3Blob(text, isMd?, kbps?)` return a `Blob` for headless capture.
+- **Programmatic**: `window.AgentScore.renderWavBlob(text, isMd?)`,
+  `renderMp3Blob(text, isMd?, kbps?)`, and `renderMidiBlob(text, isMd?)` each
+  return a `Blob` for headless capture.
 
 ## Notes / limits
 

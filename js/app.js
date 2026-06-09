@@ -3,6 +3,7 @@ import { jsonToSong, songToJson, mdToSong, songToMd, normalizeSong } from "./for
 import { buildEngine, renderWav, renderMp3, INSTRUMENTS, probeInstruments, ensureSamplesLoaded, previewInstrument } from "./audio.js";
 import { renderSheet } from "./sheet.js";
 import { renderPalette, renderLanes } from "./ui.js";
+import { songToMidiBlob } from "./midi.js";
 import { EXAMPLES } from "./examples.js";
 
 const INST_CAT = Object.fromEntries(INSTRUMENTS.map((i) => [i.id, i.cat]));
@@ -11,7 +12,7 @@ const instCat = (id) => INST_CAT[id] || "Synth";
 const $ = (id) => document.getElementById(id);
 const els = {
   ex: $("ex"), play: $("play"), stop: $("stop"), loop: $("loop"),
-  sheetBtn: $("sheetBtn"), wavBtn: $("wavBtn"), mp3Btn: $("mp3Btn"), jsonBtn: $("jsonBtn"), mdBtn: $("mdBtn"),
+  sheetBtn: $("sheetBtn"), wavBtn: $("wavBtn"), mp3Btn: $("mp3Btn"), midiBtn: $("midiBtn"), jsonBtn: $("jsonBtn"), mdBtn: $("mdBtn"),
   tabJson: $("tabJson"), tabMd: $("tabMd"), convert: $("convert"),
   json: $("json"), md: $("md"), error: $("error"), readout: $("readout"),
   viz: $("viz"), sheet: $("sheet"), lanes: $("lanes"), palette: $("palette"),
@@ -125,6 +126,7 @@ async function exportAudio(btn, label, ext, renderFn) {
 }
 els.wavBtn.addEventListener("click", () => exportAudio(els.wavBtn, "WAV", "wav", (s, t) => renderWav(s, t)));
 els.mp3Btn.addEventListener("click", () => exportAudio(els.mp3Btn, "MP3", "mp3", (s, t) => renderMp3(s, 192, t)));
+els.midiBtn.addEventListener("click", () => { const s = getSong(); if (s) download(songToMidiBlob(s), `${slug(s.title)}.mid`); });
 els.jsonBtn.addEventListener("click", () => { const s = getSong(); if (s) download(new Blob([songToJson(s)], { type: "application/json" }), `${slug(s.title)}.json`); });
 els.mdBtn.addEventListener("click", () => { const s = getSong(); if (s) download(new Blob([songToMd(s)], { type: "text/markdown" }), `${slug(s.title)}.md`); });
 
@@ -147,6 +149,7 @@ window.AgentScore = {
   instruments: INSTRUMENTS, probeInstruments,
   async renderWavBlob(text, isMd = false, tailSec = 2.5) { await Tone.start(); return renderWav(parseText(text, isMd), tailSec); },
   async renderMp3Blob(text, isMd = false, kbps = 192, tailSec = 2.5) { await Tone.start(); return renderMp3(parseText(text, isMd), kbps, tailSec); },
+  renderMidiBlob(text, isMd = false) { return songToMidiBlob(parseText(text, isMd)); },
 };
 function parseText(text, isMd) { return isMd ? mdToSong(text) : jsonToSong(text); }
 

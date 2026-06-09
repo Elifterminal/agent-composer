@@ -20,7 +20,8 @@ Open `index.html` (or the hosted Pages URL). Pick a preset, hit **▶ Play**.
 Then edit the score in the **JSON** or **Markdown** tab and play again. `⇄
 convert` rewrites the active editor into the other format. **🎼 Engrave** draws
 the sheet music; **💾 WAV** and **💾 MP3** render audio (MP3 is 192 kbps CBR via
-lamejs); **⬇ .json / ⬇ .md** download the score. Tick **loop** before exporting
+lamejs); **🎹 MIDI** exports a Standard MIDI File (drumkit → GM channel 10) for
+any DAW; **⬇ .json / ⬇ .md** download the score. Tick **loop** before exporting
 to render a **seamless loop** — the render is trimmed to the exact bar length
 (no reverb tail) so end meets beginning cleanly.
 
@@ -33,6 +34,7 @@ can render and capture audio with **no servers and no clicks**:
 // returns a Blob — call from the page context (e.g. Playwright page.evaluate)
 const wav = await AgentScore.renderWavBlob(jsonText);          // or (mdText, true)
 const mp3 = await AgentScore.renderMp3Blob(jsonText, false, 192);
+const mid = AgentScore.renderMidiBlob(jsonText);               // Standard MIDI File
 // also: jsonToSong, mdToSong, songToJson, songToMd, normalizeSong
 ```
 
@@ -141,6 +143,7 @@ js/format.js      JSON <-> Markdown <-> Song, validation
 js/instruments.js instrument catalog (synth presets + sampled maps)
 js/audio.js       Tone.js engine, sample loader, transport, WAV/MP3 render
 js/sheet.js       VexFlow sheet-music transcriber
+js/midi.js        Standard MIDI File exporter
 js/ui.js          instrument palette + track-lane visualizer
 js/examples.js    preset songs
 js/app.js         UI wiring + window.AgentScore API
