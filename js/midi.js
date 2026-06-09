@@ -1,7 +1,36 @@
 // midi.js — export an AgentScore song as a Standard MIDI File (format 1).
 // No dependencies beyond Tone (already loaded) for note<->MIDI + duration<->ticks.
-// One MIDI track per song track; `drumkit` tracks go to channel 10 (GM drums).
+// One MIDI track per song track, each on its own channel with a General MIDI
+// program so it opens with a sensible sound in a DAW; `drumkit` tracks go to
+// channel 10 (GM drums).
+import { SYNTHS, SAMPLED } from "./instruments.js";
 const Tone = window.Tone;
+
+// instrument id -> General MIDI program (0-indexed). Specific ids first, then a
+// per-category fallback so any instrument maps to *something* reasonable.
+const GM_BY_ID = {
+  piano: 0, "synth-piano": 0, "e-piano": 4, rhodes: 4, clav: 7,
+  "saw-lead": 81, supersaw: 81, "sync-lead": 81, "fm-lead": 81, "square-lead": 80, "pwm-lead": 80,
+  "warm-pad": 89, "glass-pad": 88, "choir-pad": 91, "strings-pad": 50, "dark-pad": 90,
+  harp: 46, koto: 107, pluck: 45,
+  marimba: 12, kalimba: 108, bell: 14, "music-box": 10, glocken: 9, xylophone: 13,
+  "synth-brass": 62, "trumpet-ish": 56, trumpet: 56, trombone: 57, tuba: 58, "french-horn": 60,
+  "synth-strings": 50, pizzicato: 45, violin: 40, cello: 42, contrabass: 43,
+  "guitar-acoustic": 25, "guitar-electric": 27, "guitar-nylon": 24,
+  flute: 73, clarinet: 71, bassoon: 70, saxophone: 66,
+  organ: 19, "rock-organ": 18, harmonium: 20,
+  "bass-electric": 33,
+  MonoSynth: 38, DuoSynth: 90, AMSynth: 89, FMSynth: 81, synth: 80, Synth: 80,
+  "chip-tri": 80, "noise-sweep": 122, zap: 121,
+};
+const GM_BY_CAT = { Bass: 38, Lead: 81, Keys: 4, Pad: 89, Pluck: 46, Mallet: 12, Brass: 61, Strings: 48, Guitar: 25, Woodwind: 73, Organ: 19, Synth: 80, Chip: 80, FX: 96 };
+const CAT_OF = {};
+for (const [id, d] of Object.entries(SYNTHS)) CAT_OF[id] = d.cat;
+for (const [id, d] of Object.entries(SAMPLED)) CAT_OF[id] = d.cat;   // sampled wins on id collisions, matching the engine
+function programFor(id) {
+  if (id in GM_BY_ID) return GM_BY_ID[id];
+  return GM_BY_CAT[CAT_OF[id]] ?? 0;
+}
 
 // General MIDI drum note numbers for our kit names (channel 10).
 const GM_DRUM = {
@@ -27,9 +56,8 @@ function noteToMidi(n) {
 }
 
 // Build one MThd-less track chunk body (the event stream) for a song track.
-function trackEvents(track, isDrum) {
+function trackEvents(track, ch, isDrum) {
   // collect absolute-tick on/off events, then serialize as deltas
-  const ch = isDrum ? 9 : 0;
   const evs = [];
   let tick = 0;
   for (const n of track.notes) {
@@ -82,10 +110,16 @@ export function songToMidiBlob(song) {
   Tone.Transport.bpm.value = song.tempo;             // so durToTicks resolves correctly
   const trackChunks = [];
   trackChunks.push(chunk("MTrk", [...metaTrack(song), ...EOT]));
+  let nextCh = 0;                                    // melodic tracks get their own channel (skip 9 = drums)
   for (const t of song.tracks) {
     const isDrum = t.instrument === "drumkit";
+    let ch;
+    if (isDrum) ch = 9;
+    else { if (nextCh === 9) nextCh = 10; ch = Math.min(15, nextCh); nextCh++; }
     const name = textBytes(t.name || "Track");
-    const body = [0x00, 0xff, 0x03, ...vlq(name.length), ...name, ...trackEvents(t, isDrum), ...EOT];
+    const body = [0x00, 0xff, 0x03, ...vlq(name.length), ...name];
+    if (!isDrum) body.push(0x00, 0xc0 | ch, programFor(t.instrument) & 0x7f);   // program change
+    body.push(...trackEvents(t, ch, isDrum), ...EOT);
     trackChunks.push(chunk("MTrk", body));
   }
   const ntrks = trackChunks.length;

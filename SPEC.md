@@ -97,9 +97,11 @@ duration can't be parsed is skipped.
   master reverb tail.
 - **MP3** — same render, encoded to 192 kbps CBR (lamejs).
 - **MIDI** — Standard MIDI File (format 1, 192 PPQ): one MIDI track per song
-  track, `drumkit` tracks mapped to GM drums on channel 10, tempo + time
-  signature in a conductor track. Notes/chords/rests and velocities are
-  preserved; per-track `fx` and synth choice are not (MIDI carries no audio).
+  track, each on its own channel with a **General MIDI program** chosen from the
+  instrument (so it opens with a sensible sound in a DAW); `drumkit` tracks
+  mapped to GM drums on channel 10; tempo + time signature in a conductor track.
+  Notes/chords/rests and velocities are preserved; per-track `fx` and the exact
+  synth voicing are not (MIDI carries no audio).
 - **.json / .md** — the score itself, in either format.
 - **Programmatic**: `window.AgentScore.renderWavBlob(text, isMd?)`,
   `renderMp3Blob(text, isMd?, kbps?)`, and `renderMidiBlob(text, isMd?)` each
