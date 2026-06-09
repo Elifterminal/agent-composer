@@ -1,8 +1,12 @@
 // app.js — wires the editors, transport, sheet engraver and exporters together.
 import { jsonToSong, songToJson, mdToSong, songToMd, normalizeSong } from "./format.js";
-import { buildEngine, renderWav, renderMp3, INSTRUMENTS, probeInstruments, ensureSamplesLoaded } from "./audio.js";
+import { buildEngine, renderWav, renderMp3, INSTRUMENTS, probeInstruments, ensureSamplesLoaded, previewInstrument } from "./audio.js";
 import { renderSheet } from "./sheet.js";
+import { renderPalette, renderLanes } from "./ui.js";
 import { EXAMPLES } from "./examples.js";
+
+const INST_CAT = Object.fromEntries(INSTRUMENTS.map((i) => [i.id, i.cat]));
+const instCat = (id) => INST_CAT[id] || "Synth";
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -10,7 +14,7 @@ const els = {
   sheetBtn: $("sheetBtn"), wavBtn: $("wavBtn"), mp3Btn: $("mp3Btn"), jsonBtn: $("jsonBtn"), mdBtn: $("mdBtn"),
   tabJson: $("tabJson"), tabMd: $("tabMd"), convert: $("convert"),
   json: $("json"), md: $("md"), error: $("error"), readout: $("readout"),
-  viz: $("viz"), sheet: $("sheet"),
+  viz: $("viz"), sheet: $("sheet"), lanes: $("lanes"), palette: $("palette"),
 };
 
 let fmt = "json";          // active editor
@@ -30,6 +34,7 @@ function clearError() { els.error.classList.add("hidden"); }
 function setReadout(song) {
   const notes = song.tracks.reduce((a, t) => a + t.notes.length, 0);
   els.readout.textContent = `${song.tempo} BPM · ${song.timeSignature} · ${song.tracks.length} track${song.tracks.length !== 1 ? "s" : ""} · ${notes} notes`;
+  try { renderLanes(els.lanes, song, instCat); } catch (e) { /* non-fatal */ }
 }
 
 // ---------- load / parse ----------
@@ -146,4 +151,5 @@ window.AgentScore = {
 function parseText(text, isMd) { return isMd ? mdToSong(text) : jsonToSong(text); }
 
 // boot
+renderPalette(els.palette, INSTRUMENTS, previewInstrument);
 loadSong(normalizeSong(EXAMPLES[0].song));

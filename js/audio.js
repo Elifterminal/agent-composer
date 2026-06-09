@@ -121,6 +121,22 @@ function makeDrumKit() {
   };
 }
 
+// Audition a single instrument (used by the palette). Loads samples if needed.
+export async function previewInstrument(id, note = "C4") {
+  await Tone.start();
+  if (SAMPLED[id]) await ensureSamplesLoaded({ tracks: [{ instrument: id }] });
+  const out = new Tone.Volume(-3).toDestination();
+  const inst = makeInstrument(id);
+  inst.output.connect(out);
+  const t = Tone.now() + 0.03;
+  if (id === "drumkit") {
+    ["kick", "hat", "snare", "hat", "openhat"].forEach((d, i) => inst.trigger(d, 0.2, t + i * 0.16, 0.85));
+  } else {
+    inst.trigger(["E3", "G#3", "B3"], 0.9, t, 0.7);        // a little chord so pads/keys read
+  }
+  setTimeout(() => { try { inst.dispose(); out.dispose(); } catch (e) {} }, 1800);
+}
+
 // Diagnostic: construct + trigger every instrument once, report failures.
 export function probeInstruments() {
   const res = [];

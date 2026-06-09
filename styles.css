@@ -77,3 +77,20 @@ textarea:focus{outline:none; border-color:var(--accent)}
   background:#05080d; border:1px solid var(--line); border-radius:8px; padding:12px; font-size:12px;
 }
 footer{max-width:1180px; margin:6px auto 30px; padding:0 18px; color:var(--muted); font-size:12px}
+
+/* track-lane visualizer */
+.lanes{width:100%; display:block; background:#0a1018; border-radius:10px}
+
+/* instrument palette */
+.pal-bar{display:flex; gap:12px; align-items:center; margin-bottom:8px}
+.pal-search{flex:0 1 320px; background:#05080d; color:var(--ink); border:1px solid var(--line);
+  border-radius:8px; padding:7px 10px; font-family:var(--mono); font-size:12.5px}
+.pal-search:focus{outline:none; border-color:var(--accent)}
+.pal-grid{display:flex; flex-direction:column; gap:4px; max-height:360px; overflow-y:auto; padding-right:4px}
+.pal-cat{font-size:11px; letter-spacing:1.5px; color:var(--muted); margin:8px 0 3px; display:flex; align-items:center; gap:7px}
+.pal-cat .dot{width:8px; height:8px; border-radius:50%; display:inline-block}
+.pal-row{display:flex; flex-wrap:wrap; gap:6px}
+.pal-chip{border:1px solid var(--line); border-left:3px solid var(--c, var(--accent)); border-radius:6px;
+  padding:5px 10px; font-size:12px; background:var(--bg2); color:var(--ink); cursor:pointer; transition:.1s}
+.pal-chip:hover{border-color:var(--c, var(--accent)); color:#fff}
+.pal-chip.playing{background:var(--c, var(--accent)); color:#04110d; border-color:var(--c)}
