@@ -1,6 +1,6 @@
 // audio.js — Tone.js playback + offline WAV render for an AgentScore song.
 // Tone is loaded globally from the CDN.
-import { SYNTHS, SAMPLED, instrumentList, sampledList } from "./instruments.js";
+import { SYNTHS, SAMPLED, instrumentList, sampledList, TRIM } from "./instruments.js";
 const Tone = window.Tone;
 
 // ---- sample loading ---------------------------------------------------------
@@ -112,7 +112,7 @@ function makeInstrument(name, custom = {}) {
     const urls = {};
     if (map) for (const [note, buf] of Object.entries(map)) urls[note] = new Tone.ToneAudioBuffer(buf);
     const s = new Tone.Sampler({ urls, release: d.release ?? 1 });
-    if (typeof d.gain === "number") s.volume.value = d.gain;
+    s.volume.value = (d.gain || 0) + (TRIM[name] || 0);
     return {
       output: s,
       trigger: (note, durSec, time, vel) => { try { s.triggerAttackRelease(note, durSec, time, vel); } catch (e) {} },
@@ -126,7 +126,7 @@ function makeInstrument(name, custom = {}) {
   else if (def.isNoise) { node = new Ctor(def.opts || {}); kind = "noise"; }
   else if (def.mono) { node = new Ctor(def.opts || {}); kind = "default"; }
   else { node = new Tone.PolySynth(Ctor, def.opts || {}); }
-  if (typeof def.gain === "number" && node.volume) node.volume.value = def.gain;
+  if (node.volume) node.volume.value = (def.gain || 0) + (TRIM[name] || 0);
   return {
     output: node,
     trigger: (note, durSec, time, vel) => {
@@ -188,7 +188,7 @@ function makeCustomInstrument(id, def) {
 // (cowbell, shaker, tambourine, conga, clave, generic perc). All synthesized —
 // no samples, so it renders offline instantly and ships nothing copyrighted.
 function makeDrumKit() {
-  const out = new Tone.Gain(1);
+  const out = new Tone.Gain(Math.pow(10, (TRIM["drumkit"] || 0) / 20));
   const noise = (decay, type = "white") => new Tone.NoiseSynth({ noise: { type }, envelope: { attack: 0.001, decay, sustain: 0 } }).connect(out);
 
   const kick = new Tone.MembraneSynth({ octaves: 6, pitchDecay: 0.045 }).connect(out);
