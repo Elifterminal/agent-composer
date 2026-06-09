@@ -3,6 +3,42 @@
 import { SYNTHS, SAMPLED, instrumentList, sampledList } from "./instruments.js";
 const Tone = window.Tone;
 
+// ---- sample loading ---------------------------------------------------------
+// Tone's own buffer loader is unreliable for some CDN-hosted mp3s, so we fetch
+// + decode samples natively (which works everywhere), cache the AudioBuffers,
+// and hand them to Tone.Sampler as ready buffers. Context-independent buffers
+// also let the offline render reuse what was decoded in the live context.
+const SAMPLE_CACHE = new Map();          // url -> AudioBuffer
+const SAMPLER_MAPS = {};                  // instrument id -> { note: AudioBuffer }
+
+async function decodeUrl(url) {
+  if (SAMPLE_CACHE.has(url)) return SAMPLE_CACHE.get(url);
+  const resp = await fetch(url, { mode: "cors" });
+  if (!resp.ok) throw new Error(`sample HTTP ${resp.status}: ${url}`);
+  const ab = await resp.arrayBuffer();
+  const buf = await Tone.getContext().rawContext.decodeAudioData(ab);
+  SAMPLE_CACHE.set(url, buf);
+  return buf;
+}
+async function loadSampledDef(id) {
+  if (SAMPLER_MAPS[id]) return SAMPLER_MAPS[id];
+  const def = SAMPLED[id];
+  if (!def) return null;
+  const pairs = await Promise.all(
+    Object.entries(def.urls).map(async ([note, file]) => [note, await decodeUrl(def.baseUrl + file)]),
+  );
+  const map = {};
+  for (const [note, buf] of pairs) map[note] = buf;
+  SAMPLER_MAPS[id] = map;
+  return map;
+}
+// Preload every sampled instrument a song uses. Resilient: a failed instrument
+// is skipped (its track falls back to silence) rather than killing the render.
+export async function ensureSamplesLoaded(song) {
+  const ids = [...new Set(song.tracks.map((t) => t.instrument).filter((i) => SAMPLED[i] && !SAMPLER_MAPS[i]))];
+  await Promise.all(ids.map((id) => loadSampledDef(id).catch((e) => { console.warn("[AgentScore] sample load failed:", id, e.message); })));
+}
+
 const DRUMS = ["kick", "snare", "hat", "openhat", "clap", "tom", "ride", "crash"];
 export function isDrumName(n) { return DRUMS.includes(String(n).toLowerCase()); }
 
@@ -22,7 +58,11 @@ function makeInstrument(name) {
   if (name === "drumkit") return makeDrumKit();
   if (SAMPLED[name]) {
     const d = SAMPLED[name];
-    const s = new Tone.Sampler({ urls: d.urls, baseUrl: d.baseUrl, release: d.release ?? 1 });
+    const map = SAMPLER_MAPS[name];
+    // wrap each cached AudioBuffer for Tone; requires ensureSamplesLoaded() first
+    const urls = {};
+    if (map) for (const [note, buf] of Object.entries(map)) urls[note] = new Tone.ToneAudioBuffer(buf);
+    const s = new Tone.Sampler({ urls, release: d.release ?? 1 });
     if (typeof d.gain === "number") s.volume.value = d.gain;
     return {
       output: s,
@@ -159,6 +199,7 @@ export async function renderBuffer(song, tailSec = 2.5) {
   let length = 0.5;
   for (const t of song.tracks) length = Math.max(length, eventsForTrack(t).length);
   const tail = Math.max(0, tailSec);
+  await ensureSamplesLoaded(song);            // decode samples in the live context first
 
   const buffer = await Tone.Offline(async () => {
     Tone.Transport.bpm.value = song.tempo;

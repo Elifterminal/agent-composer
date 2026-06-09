@@ -1,6 +1,6 @@
 // app.js — wires the editors, transport, sheet engraver and exporters together.
 import { jsonToSong, songToJson, mdToSong, songToMd, normalizeSong } from "./format.js";
-import { buildEngine, renderWav, renderMp3, INSTRUMENTS, probeInstruments } from "./audio.js";
+import { buildEngine, renderWav, renderMp3, INSTRUMENTS, probeInstruments, ensureSamplesLoaded } from "./audio.js";
 import { renderSheet } from "./sheet.js";
 import { EXAMPLES } from "./examples.js";
 
@@ -71,9 +71,9 @@ async function play() {
   const song = getSong(); if (!song) return;
   stop();
   await Tone.start();                          // unlock audio (user gesture)
+  await ensureSamplesLoaded(song);             // pre-decode any sampled instruments
   engine = buildEngine(song);
-  await Tone.loaded();                          // wait for any sampled instruments
-  if (!engine) return;                          // (stopped while loading)
+  if (!engine) return;
   engine.start(els.loop.checked);
   els.play.classList.add("on");
   visualize();

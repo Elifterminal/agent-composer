@@ -10,8 +10,8 @@
 
 // category order for grouped UI
 export const CATEGORIES = [
-  "Bass", "Lead", "Keys", "Pad", "Pluck", "Mallet", "Brass", "Strings",
-  "Organ", "Synth", "Chip", "FX", "Drums",
+  "Bass", "Lead", "Keys", "Pad", "Pluck", "Mallet", "Brass", "Strings", "Guitar",
+  "Woodwind", "Organ", "Synth", "Chip", "FX", "Drums",
 ];
 
 // helper to keep the table terse
@@ -96,6 +96,7 @@ export const SYNTHS = {
 // Hosted on trusted, pinned CDNs (see CSP). No samples are bundled in the repo.
 // ---------------------------------------------------------------------------
 const SAL = "https://tonejs.github.io/audio/salamander/";
+const SAMP = "https://cdn.jsdelivr.net/gh/nbrosowsky/tonejs-instruments@622c2f1c32c8cfce4158ddc3eb26e518ddef37e5/samples/";
 export const SAMPLED = {
   "piano": {
     label: "Grand Piano", cat: "Keys", gain: -8, release: 1, baseUrl: SAL,
@@ -110,6 +111,25 @@ export const SAMPLED = {
       A7:"A7.mp3", C8:"C8.mp3",
     },
   },
+  "bass-electric": { label:"Bass Guitar", cat:"Bass", gain:-6, release:0.6, baseUrl:SAMP + "bass-electric/", urls:{ "A#1":"As1.mp3", "A#2":"As2.mp3", "A#3":"As3.mp3", "A#4":"As4.mp3", "C#1":"Cs1.mp3", "C#2":"Cs2.mp3", "C#3":"Cs3.mp3", "C#4":"Cs4.mp3", "C#5":"Cs5.mp3", "E1":"E1.mp3", "E2":"E2.mp3", "E3":"E3.mp3", "E4":"E4.mp3", "G1":"G1.mp3", "G2":"G2.mp3", "G3":"G3.mp3", "G4":"G4.mp3" } },
+  "guitar-acoustic": { label:"Acoustic Guitar", cat:"Guitar", gain:-6, release:0.6, baseUrl:SAMP + "guitar-acoustic/", urls:{ "A#2":"As2.mp3", "A#3":"As3.mp3", "A#4":"As4.mp3", "A2":"A2.mp3", "A3":"A3.mp3", "A4":"A4.mp3", "B2":"B2.mp3", "B3":"B3.mp3", "B4":"B4.mp3", "C#3":"Cs3.mp3", "C#4":"Cs4.mp3", "C#5":"Cs5.mp3", "C3":"C3.mp3", "C4":"C4.mp3", "C5":"C5.mp3", "D#2":"Ds2.mp3", "D#3":"Ds3.mp3", "D#4":"Ds4.mp3", "D2":"D2.mp3", "D3":"D3.mp3", "D4":"D4.mp3", "D5":"D5.mp3", "E2":"E2.mp3", "E3":"E3.mp3", "E4":"E4.mp3", "F#2":"Fs2.mp3", "F#3":"Fs3.mp3", "F#4":"Fs4.mp3", "F2":"F2.mp3", "F3":"F3.mp3", "F4":"F4.mp3", "G#2":"Gs2.mp3", "G#3":"Gs3.mp3", "G#4":"Gs4.mp3", "G2":"G2.mp3", "G3":"G3.mp3", "G4":"G4.mp3" } },
+  "guitar-electric": { label:"Electric Guitar", cat:"Guitar", gain:-6, release:0.6, baseUrl:SAMP + "guitar-electric/", urls:{ "A2":"A2.mp3", "A3":"A3.mp3", "A4":"A4.mp3", "A5":"A5.mp3", "C#2":"Cs2.mp3", "C3":"C3.mp3", "C4":"C4.mp3", "C5":"C5.mp3", "C6":"C6.mp3", "D#3":"Ds3.mp3", "D#4":"Ds4.mp3", "D#5":"Ds5.mp3", "E2":"E2.mp3", "F#2":"Fs2.mp3", "F#3":"Fs3.mp3", "F#4":"Fs4.mp3", "F#5":"Fs5.mp3" } },
+  "guitar-nylon": { label:"Nylon Guitar", cat:"Guitar", gain:-6, release:0.6, baseUrl:SAMP + "guitar-nylon/", urls:{ "A#5":"As5.mp3", "A2":"A2.mp3", "A3":"A3.mp3", "A4":"A4.mp3", "A5":"A5.mp3", "B1":"B1.mp3", "B2":"B2.mp3", "B3":"B3.mp3", "B4":"B4.mp3", "C#3":"Cs3.mp3", "C#4":"Cs4.mp3", "C#5":"Cs5.mp3", "D#4":"Ds4.mp3", "D2":"D2.mp3", "D3":"D3.mp3", "D5":"D5.mp3", "E2":"E2.mp3", "E3":"E3.mp3", "E4":"E4.mp3", "E5":"E5.mp3", "F#2":"Fs2.mp3", "F#3":"Fs3.mp3", "F#4":"Fs4.mp3", "F#5":"Fs5.mp3", "G#2":"Gs2.mp3", "G#4":"Gs4.mp3", "G#5":"Gs5.mp3", "G3":"G3.mp3", "G5":"G5.mp3" } },
+  "harp": { label:"Harp (sampled)", cat:"Pluck", gain:-6, release:0.6, baseUrl:SAMP + "harp/", urls:{ "A2":"A2.mp3", "A4":"A4.mp3", "A6":"A6.mp3", "B1":"B1.mp3", "B3":"B3.mp3", "B5":"B5.mp3", "B6":"B6.mp3", "C3":"C3.mp3", "C5":"C5.mp3", "D2":"D2.mp3", "D4":"D4.mp3", "D6":"D6.mp3", "D7":"D7.mp3", "E1":"E1.mp3", "E3":"E3.mp3", "E5":"E5.mp3", "F2":"F2.mp3", "F4":"F4.mp3", "F6":"F6.mp3", "F7":"F7.mp3", "G1":"G1.mp3", "G3":"G3.mp3", "G5":"G5.mp3" } },
+  "violin": { label:"Violin", cat:"Strings", gain:-6, release:0.6, baseUrl:SAMP + "violin/", urls:{ "A3":"A3.mp3", "A4":"A4.mp3", "A5":"A5.mp3", "A6":"A6.mp3", "C4":"C4.mp3", "C5":"C5.mp3", "C6":"C6.mp3", "C7":"C7.mp3", "E4":"E4.mp3", "E5":"E5.mp3", "E6":"E6.mp3", "G3":"G3.mp3", "G4":"G4.mp3", "G5":"G5.mp3", "G6":"G6.mp3" } },
+  "cello": { label:"Cello", cat:"Strings", gain:-6, release:0.6, baseUrl:SAMP + "cello/", urls:{ "A#2":"As2.mp3", "A#3":"As3.mp3", "A2":"A2.mp3", "A3":"A3.mp3", "A4":"A4.mp3", "B2":"B2.mp3", "B3":"B3.mp3", "B4":"B4.mp3", "C#3":"Cs3.mp3", "C#4":"Cs4.mp3", "C2":"C2.mp3", "C3":"C3.mp3", "C4":"C4.mp3", "C5":"C5.mp3", "D#2":"Ds2.mp3", "D#3":"Ds3.mp3", "D#4":"Ds4.mp3", "D2":"D2.mp3", "D3":"D3.mp3", "D4":"D4.mp3", "E2":"E2.mp3", "E3":"E3.mp3", "E4":"E4.mp3", "F#3":"Fs3.mp3", "F#4":"Fs4.mp3", "F2":"F2.mp3", "F3":"F3.mp3", "F4":"F4.mp3", "G#2":"Gs2.mp3", "G#3":"Gs3.mp3", "G#4":"Gs4.mp3", "G2":"G2.mp3", "G3":"G3.mp3", "G4":"G4.mp3" } },
+  "contrabass": { label:"Contrabass", cat:"Strings", gain:-6, release:0.6, baseUrl:SAMP + "contrabass/", urls:{ "A#1":"As1.mp3", "A2":"A2.mp3", "B3":"B3.mp3", "C#3":"Cs3.mp3", "C2":"C2.mp3", "D2":"D2.mp3", "E2":"E2.mp3", "E3":"E3.mp3", "F#1":"Fs1.mp3", "F#2":"Fs2.mp3", "G#2":"Gs2.mp3", "G#3":"Gs3.mp3", "G1":"G1.mp3" } },
+  "flute": { label:"Flute", cat:"Woodwind", gain:-6, release:0.6, baseUrl:SAMP + "flute/", urls:{ "A4":"A4.mp3", "A5":"A5.mp3", "A6":"A6.mp3", "C4":"C4.mp3", "C5":"C5.mp3", "C6":"C6.mp3", "C7":"C7.mp3", "E4":"E4.mp3", "E5":"E5.mp3", "E6":"E6.mp3" } },
+  "clarinet": { label:"Clarinet", cat:"Woodwind", gain:-6, release:0.6, baseUrl:SAMP + "clarinet/", urls:{ "A#3":"As3.mp3", "A#4":"As4.mp3", "A#5":"As5.mp3", "D3":"D3.mp3", "D4":"D4.mp3", "D5":"D5.mp3", "D6":"D6.mp3", "F#6":"Fs6.mp3", "F3":"F3.mp3", "F4":"F4.mp3", "F5":"F5.mp3" } },
+  "bassoon": { label:"Bassoon", cat:"Woodwind", gain:-6, release:0.6, baseUrl:SAMP + "bassoon/", urls:{ "A2":"A2.mp3", "A3":"A3.mp3", "A4":"A4.mp3", "C3":"C3.mp3", "C4":"C4.mp3", "C5":"C5.mp3", "E4":"E4.mp3", "G2":"G2.mp3", "G3":"G3.mp3", "G4":"G4.mp3" } },
+  "saxophone": { label:"Saxophone", cat:"Woodwind", gain:-6, release:0.6, baseUrl:SAMP + "saxophone/", urls:{ "A#3":"As3.mp3", "A#4":"As4.mp3", "A4":"A4.mp3", "A5":"A5.mp3", "B3":"B3.mp3", "B4":"B4.mp3", "C#3":"Cs3.mp3", "C#4":"Cs4.mp3", "C#5":"Cs5.mp3", "C4":"C4.mp3", "C5":"C5.mp3", "D#3":"Ds3.mp3", "D#4":"Ds4.mp3", "D#5":"Ds5.mp3", "D3":"D3.mp3", "D4":"D4.mp3", "D5":"D5.mp3", "E3":"E3.mp3", "E4":"E4.mp3", "E5":"E5.mp3", "F#3":"Fs3.mp3", "F#4":"Fs4.mp3", "F#5":"Fs5.mp3", "F3":"F3.mp3", "F4":"F4.mp3", "F5":"F5.mp3", "G#3":"Gs3.mp3", "G#4":"Gs4.mp3", "G#5":"Gs5.mp3", "G3":"G3.mp3", "G4":"G4.mp3", "G5":"G5.mp3" } },
+  "trumpet": { label:"Trumpet", cat:"Brass", gain:-6, release:0.6, baseUrl:SAMP + "trumpet/", urls:{ "A#4":"As4.mp3", "A3":"A3.mp3", "A5":"A5.mp3", "C4":"C4.mp3", "C6":"C6.mp3", "D#4":"Ds4.mp3", "D5":"D5.mp3", "F3":"F3.mp3", "F4":"F4.mp3", "F5":"F5.mp3", "G4":"G4.mp3" } },
+  "trombone": { label:"Trombone", cat:"Brass", gain:-6, release:0.6, baseUrl:SAMP + "trombone/", urls:{ "A#1":"As1.mp3", "A#2":"As2.mp3", "A#3":"As3.mp3", "C#2":"Cs2.mp3", "C#4":"Cs4.mp3", "C3":"C3.mp3", "C4":"C4.mp3", "D#2":"Ds2.mp3", "D#3":"Ds3.mp3", "D#4":"Ds4.mp3", "D3":"D3.mp3", "D4":"D4.mp3", "F2":"F2.mp3", "F3":"F3.mp3", "F4":"F4.mp3", "G#2":"Gs2.mp3", "G#3":"Gs3.mp3" } },
+  "french-horn": { label:"French Horn", cat:"Brass", gain:-6, release:0.6, baseUrl:SAMP + "french-horn/", urls:{ "A1":"A1.mp3", "A3":"A3.mp3", "C2":"C2.mp3", "C4":"C4.mp3", "D#2":"Ds2.mp3", "D3":"D3.mp3", "D5":"D5.mp3", "F3":"F3.mp3", "F5":"F5.mp3", "G2":"G2.mp3" } },
+  "tuba": { label:"Tuba", cat:"Brass", gain:-6, release:0.6, baseUrl:SAMP + "tuba/", urls:{ "A#1":"As1.mp3", "A#2":"As2.mp3", "A#3":"As3.mp3", "D#2":"Ds2.mp3", "D3":"D3.mp3", "D4":"D4.mp3", "F1":"F1.mp3", "F2":"F2.mp3", "F3":"F3.mp3" } },
+  "organ": { label:"Pipe Organ", cat:"Organ", gain:-6, release:0.6, baseUrl:SAMP + "organ/", urls:{ "A1":"A1.mp3", "A2":"A2.mp3", "A3":"A3.mp3", "A4":"A4.mp3", "A5":"A5.mp3", "C1":"C1.mp3", "C2":"C2.mp3", "C3":"C3.mp3", "C4":"C4.mp3", "C5":"C5.mp3", "C6":"C6.mp3", "D#1":"Ds1.mp3", "D#2":"Ds2.mp3", "D#3":"Ds3.mp3", "D#4":"Ds4.mp3", "D#5":"Ds5.mp3", "F#1":"Fs1.mp3", "F#2":"Fs2.mp3", "F#3":"Fs3.mp3", "F#4":"Fs4.mp3", "F#5":"Fs5.mp3" } },
+  "harmonium": { label:"Harmonium", cat:"Organ", gain:-6, release:0.6, baseUrl:SAMP + "harmonium/", urls:{ "A#2":"As2.mp3", "A#3":"As3.mp3", "A#4":"As4.mp3", "A2":"A2.mp3", "A3":"A3.mp3", "A4":"A4.mp3", "B2":"B2.mp3", "B3":"B3.mp3", "B4":"B4.mp3", "C#2":"Cs2.mp3", "C#3":"Cs3.mp3", "C#4":"Cs4.mp3", "C#5":"Cs5.mp3", "C2":"C2.mp3", "C3":"C3.mp3", "C4":"C4.mp3", "C5":"C5.mp3", "D#2":"Ds2.mp3", "D#3":"Ds3.mp3", "D#4":"Ds4.mp3", "D2":"D2.mp3", "D3":"D3.mp3", "D4":"D4.mp3", "D5":"D5.mp3", "E2":"E2.mp3", "E3":"E3.mp3", "E4":"E4.mp3", "F#2":"Fs2.mp3", "F#3":"Fs3.mp3", "F2":"F2.mp3", "F3":"F3.mp3", "F4":"F4.mp3", "G#2":"Gs2.mp3", "G#3":"Gs3.mp3", "G#4":"Gs4.mp3", "G2":"G2.mp3", "G3":"G3.mp3", "G4":"G4.mp3" } },
+  "xylophone": { label:"Xylophone", cat:"Mallet", gain:-6, release:0.6, baseUrl:SAMP + "xylophone/", urls:{ "C5":"C5.mp3", "C6":"C6.mp3", "C7":"C7.mp3", "C8":"C8.mp3", "G4":"G4.mp3", "G5":"G5.mp3", "G6":"G6.mp3", "G7":"G7.mp3" } },
 };
 
 export function sampledList() {
