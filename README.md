@@ -35,12 +35,20 @@ can render and capture audio with **no servers and no clicks**:
 const wav = await AgentScore.renderWavBlob(jsonText);          // or (mdText, true)
 const mp3 = await AgentScore.renderMp3Blob(jsonText, false, 192);
 const mid = AgentScore.renderMidiBlob(jsonText);               // Standard MIDI File
+const report = AgentScore.lint(jsonText);                      // { ok, errors, warnings, info }
 // also: jsonToSong, mdToSong, songToJson, songToMd, normalizeSong
 ```
 
 To pull the bytes out of a headless browser, read the blob and base64 it in one
 `evaluate` (or write the result to a file via your driver) — no second server,
 no CORS dance. This is the supported automation path.
+
+**Validate before you export.** Because an agent can't hear the render,
+`AgentScore.lint(text, isMd?)` returns structured feedback to self-correct
+against: `{ ok, errors[], warnings[], info }`. It flags unknown instruments and
+drum names, unparseable pitches, empty tracks, tracks whose lengths won't loop
+cleanly, unused custom instruments, and a rough clipping estimate. The **✓
+Check** toolbar button runs the same thing for humans.
 
 ## Compose as an agent
 

@@ -57,7 +57,8 @@ textarea{
 }
 textarea:focus{outline:none; border-color:var(--accent)}
 .error{margin-top:8px; padding:8px 10px; border-radius:8px; color:#fff;
-  background:rgba(255,107,107,.12); border:1px solid var(--warn)}
+  background:rgba(255,107,107,.12); border:1px solid var(--warn);
+  white-space:pre-wrap; font-size:13px; line-height:1.5}
 .hidden{display:none}
 
 .viz-panel{padding:6px}

@@ -4,6 +4,7 @@ import { buildEngine, renderWav, renderMp3, INSTRUMENTS, probeInstruments, ensur
 import { renderSheet } from "./sheet.js";
 import { renderPalette, renderLanes } from "./ui.js";
 import { songToMidiBlob } from "./midi.js";
+import { lintSong } from "./lint.js";
 import { EXAMPLES } from "./examples.js";
 
 const INST_CAT = Object.fromEntries(INSTRUMENTS.map((i) => [i.id, i.cat]));
@@ -12,7 +13,7 @@ const instCat = (id) => INST_CAT[id] || "Synth";
 const $ = (id) => document.getElementById(id);
 const els = {
   ex: $("ex"), play: $("play"), stop: $("stop"), loop: $("loop"),
-  sheetBtn: $("sheetBtn"), wavBtn: $("wavBtn"), mp3Btn: $("mp3Btn"), midiBtn: $("midiBtn"), jsonBtn: $("jsonBtn"), mdBtn: $("mdBtn"),
+  sheetBtn: $("sheetBtn"), checkBtn: $("checkBtn"), wavBtn: $("wavBtn"), mp3Btn: $("mp3Btn"), midiBtn: $("midiBtn"), jsonBtn: $("jsonBtn"), mdBtn: $("mdBtn"),
   tabJson: $("tabJson"), tabMd: $("tabMd"), convert: $("convert"),
   json: $("json"), md: $("md"), error: $("error"), readout: $("readout"),
   viz: $("viz"), sheet: $("sheet"), lanes: $("lanes"), palette: $("palette"),
@@ -114,6 +115,15 @@ function visualize() {
 // ---------- engrave / export ----------
 els.sheetBtn.addEventListener("click", () => { const s = getSong(); if (s) renderSheet(els.sheet, s, s.timeSignature); });
 
+// ---------- validate (agent feedback, surfaced for humans too) ----------
+els.checkBtn.addEventListener("click", () => {
+  const s = getSong(); if (!s) return;
+  const r = lintSong(s);
+  if (r.ok && !r.warnings.length) { clearError(); els.readout.textContent = `✓ clean · ${r.info.tracks} tracks · ${r.info.notes} notes · ${r.info.lengthBeats} beats`; return; }
+  const msgs = [...r.errors.map((m) => "✗ " + m), ...r.warnings.map((m) => "⚠ " + m)];
+  showError(msgs.join("\n"));
+});
+
 async function exportAudio(btn, label, ext, renderFn) {
   const song = getSong(); if (!song) return;
   const tail = els.loop.checked ? 0 : 2.5;   // "loop" checked => seamless export (no reverb tail)
@@ -150,6 +160,7 @@ window.AgentScore = {
   async renderWavBlob(text, isMd = false, tailSec = 2.5) { await Tone.start(); return renderWav(parseText(text, isMd), tailSec); },
   async renderMp3Blob(text, isMd = false, kbps = 192, tailSec = 2.5) { await Tone.start(); return renderMp3(parseText(text, isMd), kbps, tailSec); },
   renderMidiBlob(text, isMd = false) { return songToMidiBlob(parseText(text, isMd)); },
+  lint(text, isMd = false) { return lintSong(parseText(text, isMd)); },
 };
 function parseText(text, isMd) { return isMd ? mdToSong(text) : jsonToSong(text); }
 
