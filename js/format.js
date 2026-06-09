@@ -52,6 +52,7 @@ export const DEFAULT_SONG = {
   timeSignature: "4/4",
   swing: 0,
   master: { volume: -6, reverb: 0.18 },
+  instruments: {},
   tracks: [],
 };
 
@@ -62,8 +63,51 @@ export function normalizeSong(raw) {
   s.swing = clampNum(s.swing, 0, 1, 0);
   s.timeSignature = /^\d+\/\d+$/.test(s.timeSignature) ? s.timeSignature : "4/4";
   s.master = { volume: clampNum(s.master?.volume, -60, 6, -6), reverb: clampNum(s.master?.reverb, 0, 1, 0.18) };
+  s.instruments = normalizeInstruments(s.instruments);
   s.tracks = (Array.isArray(s.tracks) ? s.tracks : []).map(normalizeTrack);
   return s;
+}
+
+// Custom, agent-defined instruments. Two types:
+//   sampler — pitched multisample: { type:"sampler", baseUrl?, urls:{ "C4":"a.wav", ... }, gain?, release? }
+//   slicer  — chop one sample into slices triggered by name/index:
+//             { type:"slicer", url:"break.wav", slices: 16 | { "k":[start,dur], ... }, gain? }
+function normalizeInstruments(obj) {
+  const out = {};
+  if (!obj || typeof obj !== "object") return out;
+  for (const [id, raw] of Object.entries(obj)) {
+    if (!raw || typeof raw !== "object") continue;
+    const type = raw.type === "slicer" ? "slicer" : "sampler";
+    if (type === "slicer") {
+      if (typeof raw.url !== "string") continue;
+      out[id] = {
+        type, url: raw.url, baseUrl: typeof raw.baseUrl === "string" ? raw.baseUrl : "",
+        slices: normalizeSlices(raw.slices),
+        gain: clampNum(raw.gain, -60, 12, 0),
+      };
+    } else {
+      const urls = raw.urls && typeof raw.urls === "object" ? raw.urls : null;
+      if (!urls) continue;
+      const clean = {};
+      for (const [n, f] of Object.entries(urls)) if (typeof f === "string") clean[String(n)] = f;
+      out[id] = {
+        type, baseUrl: typeof raw.baseUrl === "string" ? raw.baseUrl : "",
+        urls: clean, gain: clampNum(raw.gain, -60, 12, 0), release: clampNum(raw.release, 0, 8, 0.6),
+      };
+    }
+  }
+  return out;
+}
+function normalizeSlices(s) {
+  if (typeof s === "number" && s > 0 && s <= 64) return Math.floor(s);
+  if (s && typeof s === "object") {
+    const out = {};
+    for (const [name, range] of Object.entries(s)) {
+      if (Array.isArray(range) && range.length >= 1) out[name] = [Number(range[0]) || 0, range[1] != null ? Number(range[1]) : null];
+    }
+    return out;
+  }
+  return 8; // default: 8 equal slices
 }
 function normalizeTrack(t, i) {
   return {
@@ -100,7 +144,9 @@ export function jsonToSong(text) { return normalizeSong(JSON.parse(text)); }
 export function songToMd(song) {
   const s = normalizeSong(song);
   const lines = [`# ${s.title}`, `tempo: ${s.tempo}`, `time: ${s.timeSignature}`, `swing: ${s.swing}`,
-    `master: vol ${s.master.volume} reverb ${s.master.reverb}`, ""];
+    `master: vol ${s.master.volume} reverb ${s.master.reverb}`];
+  if (s.instruments && Object.keys(s.instruments).length) lines.push(`> instruments: ${JSON.stringify(s.instruments)}`);
+  lines.push("");
   for (const t of s.tracks) {
     const head = `## ${t.name} | ${t.instrument} | vol ${t.volume} pan ${t.pan}${t.mute ? " mute" : ""}`;
     lines.push(head);
@@ -131,6 +177,10 @@ export function mdToSong(text) {
     if ((m = /^master:\s*(.+)/i.exec(line))) {
       const v = /vol\s*(-?[\d.]+)/i.exec(m[1]); const r = /reverb\s*([\d.]+)/i.exec(m[1]);
       if (v) song.master.volume = +v[1]; if (r) song.master.reverb = +r[1]; continue;
+    }
+    if ((m = /^>\s*instruments:\s*(\{.*\})\s*$/i.exec(line))) {
+      try { song.instruments = JSON.parse(m[1]); } catch (e) { /* ignore bad block */ }
+      continue;
     }
     if (cur) parseNoteLine(line, cur);          // a pattern line belongs to current track
   }

@@ -105,3 +105,26 @@ duration can't be parsed is skipped.
   time signature and drawn with tolerant (soft) voices. Drum tracks are drawn on
   the middle line as a rhythm guide.
 - No tempo automation, ties across barlines, or per-note articulation yet.
+
+## Custom instruments (agent-defined)
+
+A song may declare its own instruments in a top-level `instruments` map; tracks
+reference them by id. Two types:
+
+```json
+"instruments": {
+  "mypiano": { "type": "sampler", "baseUrl": "https://…/", "urls": { "C4": "c4.mp3", "A4": "a4.mp3" }, "gain": -3, "release": 0.6 },
+  "chop":    { "type": "slicer",  "url": "/samples/breaks/break.wav", "slices": 16, "gain": 2 }
+}
+```
+
+- **`sampler`** — a pitched multisample (or one-shot). `urls` maps notes to
+  files; Tone pitch-shifts between them. Use one entry for a simple one-shot.
+- **`slicer`** — chop a single sample and trigger slices. `slices` is either a
+  number N (N equal slices, addressed by index `"0"`…`"N-1"` in note) or a map
+  `{ "kick": [startSec, durSec], … }` (addressed by name). Each note triggers a
+  slice — perfect for breakbeats / jungle (re-sequence the amen).
+
+**Security:** sample URLs must be on a CSP-allowlisted origin (the app itself,
+`tonejs.github.io`, or `cdn.jsdelivr.net`) — arbitrary hosts are blocked by the
+Content-Security-Policy. Bundle your own samples in the app folder for `self`.

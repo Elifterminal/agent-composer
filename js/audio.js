@@ -35,8 +35,18 @@ async function loadSampledDef(id) {
 // Preload every sampled instrument a song uses. Resilient: a failed instrument
 // is skipped (its track falls back to silence) rather than killing the render.
 export async function ensureSamplesLoaded(song) {
-  const ids = [...new Set(song.tracks.map((t) => t.instrument).filter((i) => SAMPLED[i] && !SAMPLER_MAPS[i]))];
-  await Promise.all(ids.map((id) => loadSampledDef(id).catch((e) => { console.warn("[AgentScore] sample load failed:", id, e.message); })));
+  const warn = (lbl) => (e) => console.warn("[AgentScore] sample load failed:", lbl, e.message);
+  const ids = [...new Set(song.tracks.map((t) => t.instrument))];
+  const custom = song.instruments || {};
+  const tasks = [];
+  for (const id of ids) {
+    if (SAMPLED[id] && !SAMPLER_MAPS[id]) tasks.push(loadSampledDef(id).catch(warn(id)));
+    const def = custom[id];
+    if (!def) continue;
+    if (def.type === "slicer") tasks.push(decodeUrl((def.baseUrl || "") + def.url).catch(warn(id)));
+    else if (def.urls) for (const f of Object.values(def.urls)) tasks.push(decodeUrl((def.baseUrl || "") + f).catch(warn(id)));
+  }
+  await Promise.all(tasks);
 }
 
 const DRUMS = ["kick", "snare", "hat", "openhat", "clap", "tom", "ride", "crash"];
@@ -54,8 +64,9 @@ export function instrumentLabel(id) {
 }
 
 // Build an instrument. Returns { output, trigger(note,durSec,time,vel), dispose }.
-function makeInstrument(name) {
+function makeInstrument(name, custom = {}) {
   if (name === "drumkit") return makeDrumKit();
+  if (custom[name]) return makeCustomInstrument(name, custom[name]);
   if (SAMPLED[name]) {
     const d = SAMPLED[name];
     const map = SAMPLER_MAPS[name];
@@ -89,6 +100,48 @@ function makeInstrument(name) {
       } catch (e) { /* bad note / unsupported */ }
     },
     dispose: () => node.dispose(),
+  };
+}
+
+// Agent-defined instrument (declared in song.instruments). Requires its samples
+// to be preloaded via ensureSamplesLoaded().
+function makeCustomInstrument(id, def) {
+  if (def.type === "slicer") {
+    const ab = SAMPLE_CACHE.get((def.baseUrl || "") + def.url);
+    const out = new Tone.Volume(typeof def.gain === "number" ? def.gain : 0);
+    const dur = ab ? ab.duration : 1;
+    const slices = {};
+    if (typeof def.slices === "number") {
+      const w = dur / def.slices;
+      for (let i = 0; i < def.slices; i++) slices[String(i)] = [i * w, w];
+    } else if (def.slices) {
+      for (const [n, r] of Object.entries(def.slices)) slices[n] = [r[0] || 0, r[1] != null ? r[1] : Math.max(0.02, dur - (r[0] || 0))];
+    }
+    return {
+      output: out,
+      trigger: (note, _durSec, time, vel) => {
+        if (!ab) return;
+        const key = String(Array.isArray(note) ? note[0] : note);
+        const sl = slices[key];
+        if (!sl) return;
+        // fresh source + buffer per hit (sharing/disposing one buffer corrupts the render)
+        try { new Tone.ToneBufferSource(new Tone.ToneAudioBuffer(ab)).connect(out).start(time, sl[0], sl[1]); } catch (e) {}
+      },
+      dispose: () => out.dispose(),
+    };
+  }
+  // sampler (pitched multisample / one-shot) from preloaded buffers
+  const urls = {};
+  for (const [note, file] of Object.entries(def.urls || {})) {
+    const ab = SAMPLE_CACHE.get((def.baseUrl || "") + file);
+    if (ab) urls[note] = new Tone.ToneAudioBuffer(ab);
+  }
+  const s = new Tone.Sampler({ urls, release: def.release ?? 0.6 });
+  if (typeof def.gain === "number") s.volume.value = def.gain;
+  return {
+    output: s,
+    trigger: (note, durSec, time, vel) => { try { s.triggerAttackRelease(note, durSec, time, vel); } catch (e) {} },
+    dispose: () => s.dispose(),
   };
 }
 
@@ -178,7 +231,7 @@ export function buildEngine(song) {
   const parts = [], insts = [];
   let length = 0;
   for (const track of song.tracks) {
-    const inst = makeInstrument(track.instrument);
+    const inst = makeInstrument(track.instrument, song.instruments);
     const panvol = new Tone.PanVol(track.pan, track.mute ? -Infinity : track.volume);
     inst.output.connect(panvol);
     panvol.connect(reverb);
@@ -225,7 +278,7 @@ export async function renderBuffer(song, tailSec = 2.5) {
     // create all instruments first (samplers begin loading), then wait for all
     // sample buffers before scheduling so nothing renders silent.
     const built = song.tracks.map((track) => {
-      const inst = makeInstrument(track.instrument);
+      const inst = makeInstrument(track.instrument, song.instruments);
       const panvol = new Tone.PanVol(track.pan, track.mute ? -Infinity : track.volume).connect(reverb);
       inst.output.connect(panvol);
       return { inst, track };

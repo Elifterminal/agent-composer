@@ -61,4 +61,25 @@ export const EXAMPLES = [
       ],
     },
   },
+  {
+    name: "Chopped Break (slicer)",
+    song: {
+      title: "Chopped", tempo: 170, timeSignature: "4/4", swing: 0,
+      master: { volume: -5, reverb: 0.08 },
+      // agent-defined instrument: chop a bundled break into 16 equal slices,
+      // then re-sequence the slices (note = slice index) into a jungle pattern.
+      instruments: {
+        chopbreak: { type: "slicer", url: "/samples/breaks/break.wav", slices: 16, gain: 2 },
+      },
+      tracks: [
+        { name: "Break", instrument: "chopbreak", volume: -3, notes: [
+          {note:"0",dur:"16n"},{note:"4",dur:"16n"},{note:"7",dur:"16n"},{note:"4",dur:"16n"},
+          {note:"8",dur:"16n"},{note:"11",dur:"16n"},{note:"2",dur:"16n"},{note:"12",dur:"16n"},
+          {note:"0",dur:"16n"},{note:"4",dur:"16n"},{note:"7",dur:"16n"},{note:"4",dur:"16n"},
+          {note:"8",dur:"16n"},{note:"3",dur:"16n"},{note:"11",dur:"16n"},{note:"15",dur:"16n"} ] },
+        { name: "Sub", instrument: "sub-bass", volume: -4, notes: [
+          {note:"E1",dur:"4n"},{note:"E1",dur:"8n"},{note:"E1",dur:"8n"},{note:"G1",dur:"4n"},{note:"E1",dur:"4n"} ] },
+      ],
+    },
+  },
 ];

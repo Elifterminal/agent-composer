@@ -117,6 +117,10 @@ copied to your clipboard** for the score. Two families:
 
 Back-compat ids (`Synth FMSynth AMSynth MonoSynth DuoSynth`) still work.
 
+**Agent-defined instruments** — declare your own in a top-level `instruments`
+block: a `sampler` (load any multisample/one-shot) or a `slicer` (chop a sample
+into slices and re-sequence them — e.g. a breakbeat). See SPEC.md.
+
 **`drumkit`** — layer drums on separate tracks (one each for kick/snare/hats).
 Drum names: `kick snare hat openhat clap tom ride crash`; the duration sets the
 step (`kick:4 hat:8 hat:8 snare:4`).
