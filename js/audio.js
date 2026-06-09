@@ -1,6 +1,6 @@
 // audio.js — Tone.js playback + offline WAV render for an AgentScore song.
 // Tone is loaded globally from the CDN.
-import { SYNTHS, instrumentList } from "./instruments.js";
+import { SYNTHS, SAMPLED, instrumentList, sampledList } from "./instruments.js";
 const Tone = window.Tone;
 
 const DRUMS = ["kick", "snare", "hat", "openhat", "clap", "tom", "ride", "crash"];
@@ -8,17 +8,28 @@ export function isDrumName(n) { return DRUMS.includes(String(n).toLowerCase()); 
 
 // Catalog for the UI: every synth preset (grouped) + the drum kit.
 export const INSTRUMENTS = [
+  ...sampledList(),
   ...instrumentList(),
   { id: "drumkit", label: "Drum Kit", cat: "Drums", family: "drums" },
 ];
 export function instrumentLabel(id) {
   if (id === "drumkit") return "Drum Kit";
-  return SYNTHS[id]?.label || id;
+  return SAMPLED[id]?.label || SYNTHS[id]?.label || id;
 }
 
 // Build an instrument. Returns { output, trigger(note,durSec,time,vel), dispose }.
 function makeInstrument(name) {
   if (name === "drumkit") return makeDrumKit();
+  if (SAMPLED[name]) {
+    const d = SAMPLED[name];
+    const s = new Tone.Sampler({ urls: d.urls, baseUrl: d.baseUrl, release: d.release ?? 1 });
+    if (typeof d.gain === "number") s.volume.value = d.gain;
+    return {
+      output: s,
+      trigger: (note, durSec, time, vel) => { try { s.triggerAttackRelease(note, durSec, time, vel); } catch (e) {} },
+      dispose: () => s.dispose(),
+    };
+  }
   const def = SYNTHS[name] || SYNTHS["synth"];
   const Ctor = Tone[def.ctor] || Tone.Synth;
   let node, kind = "default";
@@ -154,10 +165,16 @@ export async function renderBuffer(song, tailSec = 2.5) {
     const masterVol = new Tone.Volume(song.master.volume).toDestination();
     const reverb = new Tone.Reverb({ decay: 2.4, wet: song.master.reverb }).connect(masterVol);
     await reverb.ready;
-    for (const track of song.tracks) {
+    // create all instruments first (samplers begin loading), then wait for all
+    // sample buffers before scheduling so nothing renders silent.
+    const built = song.tracks.map((track) => {
       const inst = makeInstrument(track.instrument);
       const panvol = new Tone.PanVol(track.pan, track.mute ? -Infinity : track.volume).connect(reverb);
       inst.output.connect(panvol);
+      return { inst, track };
+    });
+    await Tone.loaded();
+    for (const { inst, track } of built) {
       for (const ev of eventsForTrack(track).events) inst.trigger(ev.note, ev.dur, ev.time, ev.vel);
     }
     Tone.Transport.start();

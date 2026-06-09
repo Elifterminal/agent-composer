@@ -72,6 +72,8 @@ async function play() {
   stop();
   await Tone.start();                          // unlock audio (user gesture)
   engine = buildEngine(song);
+  await Tone.loaded();                          // wait for any sampled instruments
+  if (!engine) return;                          // (stopped while loading)
   engine.start(els.loop.checked);
   els.play.classList.add("on");
   visualize();
