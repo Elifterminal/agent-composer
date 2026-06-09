@@ -336,6 +336,10 @@ export function buildEngine(song) {
 // tailSec adds time past the last note for reverb/releases to ring out; pass 0
 // for a seamless loop (render is then exactly the musical length).
 export async function renderBuffer(song, tailSec = 2.5) {
+  // eventsForTrack resolves durations via Tone.Time(...).toSeconds(), which reads
+  // the transport BPM — set it to the song tempo FIRST, or the buffer gets sized
+  // at the default 120 BPM and a slower song is truncated (its tail cut off).
+  Tone.Transport.bpm.value = song.tempo;
   let length = 0.5;
   for (const t of song.tracks) length = Math.max(length, eventsForTrack(t).length);
   const tail = Math.max(0, tailSec);
