@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AGENTSCORE — a music composer for AI agents</title>
+<meta name="description" content="A text-native music composer: write songs as JSON or Markdown, play them, engrave sheet music, export WAV. Built for AI agents." />
+<link rel="stylesheet" href="styles.css" />
+<script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo">♾</span> AGENT<span class="accent">SCORE</span></div>
+    <div class="tag">a text-native music composer for AI agents — write <b>JSON</b> or <b>Markdown</b>, hear it, engrave it, export it</div>
+  </header>
+
+  <main>
+    <section class="panel toolbar">
+      <label>Preset
+        <select id="ex"></select>
+      </label>
+      <button id="play" class="primary">▶ Play</button>
+      <button id="stop">■ Stop</button>
+      <label class="chk"><input type="checkbox" id="loop" /> loop</label>
+      <span class="spacer"></span>
+      <button id="sheetBtn">🎼 Engrave</button>
+      <button id="wavBtn">💾 Export WAV</button>
+      <button id="jsonBtn">⬇ .json</button>
+      <button id="mdBtn">⬇ .md</button>
+      <span class="readout" id="readout">—</span>
+    </section>
+
+    <section class="panel editor">
+      <div class="tabs">
+        <button class="tab active" id="tabJson" data-fmt="json">JSON</button>
+        <button class="tab" id="tabMd" data-fmt="md">Markdown</button>
+        <span class="spacer"></span>
+        <button id="convert" class="ghost" title="convert active editor to the other format">⇄ convert</button>
+      </div>
+      <textarea id="json" spellcheck="false" wrap="off"></textarea>
+      <textarea id="md" spellcheck="false" wrap="off" hidden></textarea>
+      <div id="error" class="error hidden"></div>
+    </section>
+
+    <section class="panel viz-panel">
+      <canvas id="viz" width="1200" height="120"></canvas>
+    </section>
+
+    <section class="panel sheet-panel">
+      <div class="sheet-head">SHEET MUSIC <span class="muted">— transcribed from the score</span></div>
+      <div id="sheet" class="sheet"></div>
+    </section>
+
+    <details class="panel help">
+      <summary>format cheat-sheet (for agents)</summary>
+      <div class="help-body">
+<pre>JSON  { "title","tempo","timeSignature","swing",
+        "master":{"volume"(dB),"reverb"(0..1)},
+        "tracks":[ { "name","instrument","volume"(dB),"pan"(-1..1),"mute",
+                     "notes":[ {"note":"A4","dur":"4n","vel":0.85},
+                               {"note":["C4","E4","G4"],"dur":"2n"},   // chord
+                               {"rest":"8n"} ] } ] }
+
+MD    # Title
+      tempo: 120
+      time: 4/4
+      ## Lead | FMSynth | vol -8 pan 0
+      A4:4 C5:8 E5:8 D5:4 | B4:4 D5:8 F5:8 E5:2
+      ## Drums | drumkit
+      kick:4 hat:8 hat:8 snare:4
+
+dur   1=whole 2=half 4=quarter 8 16 32 · dotted 4. · triplet 8t
+chord C4+E4+G4:4      rest  r:4   (bar | is optional/visual)
+instr Synth · FMSynth · AMSynth · MonoSynth · DuoSynth · drumkit
+drums kick snare hat openhat clap tom ride crash</pre>
+      </div>
+    </details>
+  </main>
+
+  <footer>AgentScore · client-side only (Tone.js + VexFlow) · no servers, no AI calls — see <a href="README.md">README</a> &amp; <a href="SPEC.md">SPEC</a></footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
