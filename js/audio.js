@@ -520,7 +520,7 @@ function floatToInt16(data) {
 }
 
 // MP3 encode via lamejs (loaded globally). Stereo, CBR.
-function audioBufferToMp3Blob(ab, kbps) {
+export function audioBufferToMp3Blob(ab, kbps) {
   if (!window.lamejs) throw new Error("MP3 encoder (lamejs) not loaded");
   const ch = Math.min(2, ab.numberOfChannels), sr = ab.sampleRate;
   const enc = new window.lamejs.Mp3Encoder(ch, sr, kbps);
