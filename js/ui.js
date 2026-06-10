@@ -2,6 +2,7 @@
 // whole catalog) and the track-lane visualizer (see what a score actually does).
 // Pure view code: data + callbacks come from app.js.
 import { CATEGORIES } from "./instruments.js";
+import { isDrumKit } from "./audio.js";
 
 const CAT_COLOR = {
   Bass: "#ff6b6b", Lead: "#37e6c8", Keys: "#9b7cff", Pad: "#5a8dee", Pluck: "#f7b731",
@@ -114,7 +115,7 @@ export function renderLanes(canvas, song, instCat) {
     ctx.fillStyle = "#7d93ab"; ctx.fillText(track.instrument, 8, y0 + 32);
     if (track.mute) { ctx.fillStyle = "#ff6b6b"; ctx.fillText("muted", 8, y0 + 45); }
     // notes
-    const isDrum = track.instrument === "drumkit";
+    const isDrum = isDrumKit(track.instrument);
     for (const e of evs) {
       const x = labelW + (e.start / total) * (W - labelW - 6);
       const w = Math.max(2, (e.beats / total) * (W - labelW - 6) - 1);

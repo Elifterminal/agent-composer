@@ -52,6 +52,10 @@ export async function ensureSamplesLoaded(song) {
 export const DRUMS = ["kick", "kick808", "sub", "snare", "rim", "clap", "hat", "openhat",
   "tom", "lowtom", "hitom", "ride", "crash", "cowbell", "shaker", "tamb", "conga", "clave", "perc"];
 export function isDrumName(n) { return DRUMS.includes(String(n).toLowerCase()); }
+// All kits answer to the same 19 drum names, so a score can swap its whole kit
+// flavor by changing one instrument id.
+export const DRUM_KITS = ["drumkit", "kit808", "kit909"];
+export function isDrumKit(id) { return DRUM_KITS.includes(String(id)); }
 
 // ---- per-track effects ------------------------------------------------------
 // A track may declare `fx: [{type, ...params}]`. We build a chain of Tone
@@ -71,39 +75,94 @@ const FX_BUILDERS = {
   tremolo: (o) => new Tone.Tremolo({ frequency: cl(o.frequency, 0.1, 30, 9), depth: cl(o.depth, 0, 1, 0.7), wet: cl(o.wet, 0, 1, 0.8) }).start(),
   reverb: (o) => new Tone.Reverb({ decay: cl(o.decay, 0.1, 10, 1.8), wet: cl(o.wet, 0, 1, 0.3) }),
   eq: (o) => new Tone.EQ3({ low: cl(o.low, -24, 12, 0), mid: cl(o.mid, -24, 12, 0), high: cl(o.high, -24, 12, 0) }),
+  wah: (o) => new Tone.AutoWah({ baseFrequency: cl(o.baseFrequency ?? o.freq, 30, 1000, 100), octaves: cl(o.octaves, 1, 8, 6), sensitivity: cl(o.sensitivity, -40, 0, 0), Q: cl(o.q ?? o.Q, 0, 20, 2), wet: cl(o.wet, 0, 1, 1) }),
+  autopan: (o) => new Tone.AutoPanner({ frequency: cl(o.frequency, 0.05, 20, 1), depth: cl(o.depth, 0, 1, 1), wet: cl(o.wet, 0, 1, 1) }).start(),
+  autofilter: (o) => new Tone.AutoFilter({ frequency: cl(o.frequency, 0.05, 20, 1), baseFrequency: cl(o.baseFrequency, 20, 5000, 200), octaves: cl(o.octaves, 0, 8, 2.6), depth: cl(o.depth, 0, 1, 1), wet: cl(o.wet, 0, 1, 1) }).start(),
+  vibrato: (o) => new Tone.Vibrato({ frequency: cl(o.frequency, 0.1, 20, 5), depth: cl(o.depth, 0, 1, 0.1), wet: cl(o.wet, 0, 1, 1) }),
+  pitchshift: (o) => new Tone.PitchShift({ pitch: cl(o.pitch ?? o.semitones, -24, 24, 0), windowSize: cl(o.windowSize, 0.03, 0.1, 0.1), wet: cl(o.wet, 0, 1, 1) }),
+  freqshift: (o) => new Tone.FrequencyShifter({ frequency: cl(o.frequency, -2000, 2000, 42), wet: cl(o.wet, 0, 1, 1) }),
+  chebyshev: (o) => new Tone.Chebyshev({ order: Math.round(cl(o.order, 1, 100, 50)), wet: cl(o.wet, 0, 1, 0.5) }),
+  widener: (o) => new Tone.StereoWidener({ width: cl(o.width, 0, 1, 0.7) }),
+  compressor: (o) => new Tone.Compressor({ threshold: cl(o.threshold, -60, 0, -24), ratio: cl(o.ratio, 1, 20, 4), attack: cl(o.attack, 0.001, 1, 0.003), release: cl(o.release, 0.01, 1, 0.25), knee: cl(o.knee, 0, 40, 30) }),
+  limiter: (o) => new Tone.Limiter(cl(o.threshold, -24, 0, -6)),
 };
-// Returns { input, output, ready(), dispose() } or null for an empty/invalid chain.
+// Returns { input, output, pairs, ready(), dispose() } or null for an empty/
+// invalid chain. `pairs` keeps each built node next to its fx entry so ramp
+// automation can find its target.
 function buildFxChain(fxList) {
   if (!Array.isArray(fxList) || !fxList.length) return null;
-  const nodes = [];
+  const nodes = [], pairs = [];
   for (const fx of fxList) {
     const b = FX_BUILDERS[String(fx && fx.type).toLowerCase()];
-    if (b) { try { nodes.push(b(fx || {})); } catch (e) { /* skip bad fx */ } }
+    if (b) { try { const n = b(fx || {}); nodes.push(n); pairs.push({ node: n, fx }); } catch (e) { /* skip bad fx */ } }
   }
   if (!nodes.length) return null;
   for (let i = 0; i < nodes.length - 1; i++) nodes[i].connect(nodes[i + 1]);
   const readies = nodes.map((n) => n.ready).filter((p) => p && typeof p.then === "function");
   return {
-    input: nodes[0], output: nodes[nodes.length - 1],
+    input: nodes[0], output: nodes[nodes.length - 1], pairs,
     ready: () => Promise.all(readies),
     dispose: () => nodes.forEach((n) => { try { n.dispose(); } catch (e) {} }),
   };
 }
 
-// Catalog for the UI: every synth preset (grouped) + the drum kit.
+// ---- fx automation ramps ------------------------------------------------------
+// An fx entry may carry `ramp` (one object or an array): linear sweeps written
+// directly into the score, e.g. a 16-beat filter opening:
+//   { "type":"filter", "freq":200, "ramp":{"param":"frequency","to":4000,"at":0,"len":16} }
+// `at`/`len` are in BEATS; `from` defaults to the param's current value.
+// Scheduled directly on each param's automation timeline — Transport.schedule
+// callbacks never fire inside Tone.Offline, so transport events can't be used.
+// baseTime = context time where musical position `offsetSec` plays. In looped
+// live playback the sweep runs on the first pass only; exports bake it in.
+const RAMP_CLAMP = { feedback: [0, 0.92], wet: [0, 1], depth: [0, 1], width: [0, 1] };
+function scheduleFxRamps(pairs, baseTime = 0, offsetSec = 0) {
+  if (!pairs) return;
+  const secPerBeat = 60 / Tone.Transport.bpm.value;
+  for (const { node, fx } of pairs) {
+    const ramps = Array.isArray(fx.ramp) ? fx.ramp : fx.ramp ? [fx.ramp] : [];
+    for (const r of ramps) {
+      const p = node[String(r.param)];
+      if (!p || typeof p.setValueAtTime !== "function" || !Number.isFinite(+r.to)) continue;
+      const lim = RAMP_CLAMP[String(r.param)];
+      const clampV = (v) => (lim ? Math.min(lim[1], Math.max(lim[0], v)) : v);
+      const len = Math.max(0.01, (+r.len > 0 ? +r.len : 4) * secPerBeat);
+      const t0 = baseTime + Math.max(0, +r.at || 0) * secPerBeat - offsetSec;
+      const t1 = t0 + len;
+      try {
+        const from = Number.isFinite(+r.from) ? clampV(+r.from) : p.value;
+        const to = clampV(+r.to);
+        if (t1 <= baseTime) { p.setValueAtTime(to, baseTime); continue; }   // ramp fully before the seek point
+        if (t0 < baseTime) {                                                 // seeked into the middle of the ramp
+          p.setValueAtTime(from + (to - from) * ((baseTime - t0) / len), baseTime);
+          p.linearRampToValueAtTime(to, t1);
+        } else {
+          p.setValueAtTime(from, t0);
+          p.linearRampToValueAtTime(to, t1);
+        }
+      } catch (e) { /* unrampable param */ }
+    }
+  }
+}
+
+// Catalog for the UI: every synth preset (grouped) + the drum kits.
 export const INSTRUMENTS = [
   ...sampledList(),
   ...instrumentList(),
   { id: "drumkit", label: "Drum Kit", cat: "Drums", family: "drums" },
+  { id: "kit808", label: "808 Kit", cat: "Drums", family: "drums" },
+  { id: "kit909", label: "909 Kit", cat: "Drums", family: "drums" },
 ];
 export function instrumentLabel(id) {
   if (id === "drumkit") return "Drum Kit";
+  if (id === "kit808") return "808 Kit";
+  if (id === "kit909") return "909 Kit";
   return SAMPLED[id]?.label || SYNTHS[id]?.label || id;
 }
 
 // Build an instrument. Returns { output, trigger(note,durSec,time,vel), dispose }.
 function makeInstrument(name, custom = {}) {
-  if (name === "drumkit") return makeDrumKit();
+  if (isDrumKit(name)) return makeDrumKit(name);
   if (custom[name]) return makeCustomInstrument(name, custom[name]);
   if (SAMPLED[name]) {
     const d = SAMPLED[name];
@@ -187,20 +246,29 @@ function makeCustomInstrument(id, def) {
 // noise), rim, clap, three toms, hats, ride/crash, and hand percussion
 // (cowbell, shaker, tambourine, conga, clave, generic perc). All synthesized —
 // no samples, so it renders offline instantly and ships nothing copyrighted.
-function makeDrumKit() {
-  const out = new Tone.Gain(Math.pow(10, (TRIM["drumkit"] || 0) / 20));
+// Three flavors answer to the same drum names: "drumkit" (neutral), "kit808"
+// (boomy kick, ticky hats, long clap), "kit909" (punchy clicky kick, bright
+// snare, sizzly open hat).
+const KIT_STYLES = {
+  drumkit: { kick: { octaves: 6, pitchDecay: 0.045, decay: 0.4 }, snareBody: 0.12, snareNoise: 0.18, hat: 0.035, openhat: 0.32, clap: 0.12, clapType: "pink" },
+  kit808:  { kick: { octaves: 8, pitchDecay: 0.09, decay: 0.7 },  snareBody: 0.10, snareNoise: 0.14, hat: 0.02,  openhat: 0.24, clap: 0.20, clapType: "pink" },
+  kit909:  { kick: { octaves: 6, pitchDecay: 0.025, decay: 0.28 }, snareBody: 0.08, snareNoise: 0.24, hat: 0.03,  openhat: 0.45, clap: 0.10, clapType: "white" },
+};
+function makeDrumKit(style = "drumkit") {
+  const st = KIT_STYLES[style] || KIT_STYLES.drumkit;
+  const out = new Tone.Gain(Math.pow(10, (TRIM[style] ?? TRIM["drumkit"] ?? 0) / 20));
   const noise = (decay, type = "white") => new Tone.NoiseSynth({ noise: { type }, envelope: { attack: 0.001, decay, sustain: 0 } }).connect(out);
 
-  const kick = new Tone.MembraneSynth({ octaves: 6, pitchDecay: 0.045 }).connect(out);
+  const kick = new Tone.MembraneSynth({ octaves: st.kick.octaves, pitchDecay: st.kick.pitchDecay, envelope: { attack: 0.001, decay: st.kick.decay, sustain: 0 } }).connect(out);
   const kick808 = new Tone.MembraneSynth({ octaves: 8, pitchDecay: 0.12, envelope: { attack: 0.001, decay: 0.6, sustain: 0.02, release: 0.6 } }).connect(out);
   const tom = new Tone.MembraneSynth({ octaves: 4, pitchDecay: 0.08 }).connect(out);
   // snare = tonal body + noise crack
-  const snareBody = new Tone.MembraneSynth({ octaves: 3, pitchDecay: 0.02, envelope: { attack: 0.001, decay: 0.12, sustain: 0 } }).connect(out);
-  const snareNoise = noise(0.18);
+  const snareBody = new Tone.MembraneSynth({ octaves: 3, pitchDecay: 0.02, envelope: { attack: 0.001, decay: st.snareBody, sustain: 0 } }).connect(out);
+  const snareNoise = noise(st.snareNoise);
   const rim = noise(0.03, "white");
-  const clap = noise(0.12, "pink");
-  const hat = noise(0.035);
-  const openhat = noise(0.32);
+  const clap = noise(st.clap, st.clapType);
+  const hat = noise(st.hat);
+  const openhat = noise(st.openhat);
   const metal = new Tone.MetalSynth({ harmonicity: 5.1, resonance: 4000, octaves: 1.5 }).connect(out);
   const cowbell = new Tone.MetalSynth({ harmonicity: 8, resonance: 800, octaves: 0.5, envelope: { attack: 0.001, decay: 0.15, release: 0.05 } }).connect(out);
   const shaker = noise(0.04);
@@ -251,7 +319,7 @@ export async function previewInstrument(id, note = "C4") {
   const inst = makeInstrument(id);
   inst.output.connect(out);
   const t = Tone.now() + 0.03;
-  if (id === "drumkit") {
+  if (isDrumKit(id)) {
     ["kick", "hat", "snare", "hat", "openhat"].forEach((d, i) => inst.trigger(d, 0.2, t + i * 0.16, 0.85));
   } else {
     inst.trigger(["E3", "G#3", "B3"], 0.9, t, 0.7);        // a little chord so pads/keys read
@@ -265,7 +333,7 @@ export function probeInstruments() {
   for (const it of INSTRUMENTS) {
     try {
       const inst = makeInstrument(it.id);
-      inst.trigger(it.id === "drumkit" ? "kick" : "C4", 0.2, Tone.now() + 0.02, 0.4);
+      inst.trigger(isDrumKit(it.id) ? "kick" : "C4", 0.2, Tone.now() + 0.02, 0.4);
       setTimeout(() => { try { inst.dispose(); } catch (e) {} }, 500);
       res.push({ id: it.id, ok: true });
     } catch (e) { res.push({ id: it.id, ok: false, err: String(e && e.message || e) }); }
@@ -280,15 +348,37 @@ export function trackAudible(song, track) {
   return !song.tracks.some((t) => t.solo) || !!track.solo;
 }
 
+// Track-level tools, all plain score fields:
+//   repeat (1-64)      — loop the note list N times (pattern compression)
+//   transpose (semis)  — shift pitched notes; drum names pass through untouched
+//   offsetBeats        — push the whole track later (pickups, humanized layering)
+//   humanize (0-1)     — deterministic timing/velocity jitter (seeded, so the
+//                        same score always renders the same bytes)
+function transposeNote(note, semis) {
+  if (!semis) return note;
+  const tp = (n) => { try { return Tone.Frequency(n).transpose(semis).toNote(); } catch (e) { return n; } };
+  return Array.isArray(note) ? note.map(tp) : tp(note);
+}
+function jitter(seed) { const s = (seed * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff - 0.5; }
+
 // Convert a track's notes (sequential) into timed events in seconds (bpm-aware).
 function eventsForTrack(track) {
   const evs = [];
-  let t = 0;
-  for (const n of track.notes) {
-    const durTok = n.rest != null ? n.rest : n.dur;
-    const sec = Tone.Time(durTok).toSeconds();
-    if (n.rest == null) evs.push({ time: t, note: n.note, dur: sec, vel: n.vel ?? 0.85 });
-    t += sec;
+  const repeat = Math.max(1, Math.min(64, Math.round(track.repeat || 1)));
+  const hum = Math.max(0, Math.min(1, +track.humanize || 0));
+  let t = Math.max(0, +track.offsetBeats || 0) * (60 / Tone.Transport.bpm.value);
+  let k = 0;
+  for (let r = 0; r < repeat; r++) {
+    for (const n of track.notes) {
+      const durTok = n.rest != null ? n.rest : n.dur;
+      const sec = Tone.Time(durTok).toSeconds();
+      if (n.rest == null) {
+        const tj = hum ? Math.max(0, t + jitter(k * 2 + 1) * hum * 0.05) : t;
+        const vj = hum ? Math.max(0.05, Math.min(1, (n.vel ?? 0.85) * (1 + jitter(k * 2 + 2) * hum * 0.3))) : (n.vel ?? 0.85);
+        evs.push({ time: tj, note: transposeNote(n.note, track.transpose), dur: sec, vel: vj });
+      }
+      t += sec; k++;
+    }
   }
   return { events: evs, length: t };
 }
@@ -304,13 +394,13 @@ export function buildEngine(song) {
   masterVol.connect(analyser);
   const reverb = new Tone.Reverb({ decay: 2.4, wet: song.master.reverb }).connect(masterVol);
 
-  const parts = [], insts = [];
+  const parts = [], insts = [], fxPairs = [];
   let length = 0;
   for (const track of song.tracks) {
     const inst = makeInstrument(track.instrument, song.instruments);
     const panvol = new Tone.PanVol(track.pan, trackAudible(song, track) ? track.volume : -Infinity);
     const fx = buildFxChain(track.fx);
-    if (fx) { inst.output.connect(fx.input); fx.output.connect(panvol); insts.push(fx); }
+    if (fx) { inst.output.connect(fx.input); fx.output.connect(panvol); insts.push(fx); fxPairs.push(...fx.pairs); }
     else inst.output.connect(panvol);
     panvol.connect(reverb);
     insts.push(inst); insts.push({ dispose: () => panvol.dispose() });
@@ -328,7 +418,10 @@ export function buildEngine(song) {
       Tone.Transport.loopStart = 0;
       Tone.Transport.loopEnd = length;
       parts.forEach((p) => { p.loop = !!loop; p.loopEnd = length; p.start(0); });
-      Tone.Transport.start(undefined, Math.min(Math.max(0, offsetSec), Math.max(0, length - 0.05)));
+      const offset = Math.min(Math.max(0, offsetSec), Math.max(0, length - 0.05));
+      const startTime = Tone.now() + 0.05;
+      scheduleFxRamps(fxPairs, startTime, offset);
+      Tone.Transport.start(startTime, offset);
     },
     stop() { Tone.Transport.stop(); Tone.Transport.cancel(); },
     dispose() {
@@ -366,7 +459,7 @@ export async function renderBuffer(song, tailSec = 2.5, minLengthSec = 0) {
       const inst = makeInstrument(track.instrument, song.instruments);
       const panvol = new Tone.PanVol(track.pan, trackAudible(song, track) ? track.volume : -Infinity).connect(reverb);
       const fx = buildFxChain(track.fx);
-      if (fx) { inst.output.connect(fx.input); fx.output.connect(panvol); fxChains.push(fx); }
+      if (fx) { inst.output.connect(fx.input); fx.output.connect(panvol); fxChains.push(fx); scheduleFxRamps(fx.pairs); }
       else inst.output.connect(panvol);
       return { inst, track };
     });

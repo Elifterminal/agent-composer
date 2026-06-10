@@ -53,7 +53,7 @@
       <div class="tabs">
         <button class="tab active" id="tabJson" data-fmt="json">JSON</button>
         <button class="tab" id="tabMd" data-fmt="md">Markdown</button>
-        <button class="tab" id="tabAbc" data-fmt="abc">ABC ▸</button>
+        <button class="tab" id="tabAbc" data-fmt="abc">ABC (import)</button>
         <span class="spacer"></span>
         <button id="convert" class="ghost" title="convert active editor (ABC imports into the score)">⇄ convert</button>
       </div>
@@ -129,11 +129,18 @@ dur   1=whole 2=half 4=quarter 8 16 32 · dotted 4. · triplet 8t
 chord C4+E4+G4:4      rest  r:4   (bar | is optional/visual)
 ABC   paste ABC notation in the ABC tab → "⇄ convert" imports it to the score
       (keys/modes, accidentals, |: :| repeats, 1/2 endings, tuplets, voices)
-instr 67 ids in the palette below · drumkit · or define your own (SPEC.md)
+instr ~110 ids in the palette below · kits: drumkit kit808 kit909 (same names)
+      · or define your own sampler/slicer (SPEC.md)
 drums kick kick808 sub snare rim clap hat openhat ride crash tom lowtom
       hitom cowbell shaker tamb conga clave perc
 fx    per track: [{"type":"filter","mode":"lowpass","freq":1200,"q":4}, …]
-      filter delay pingpong distortion bitcrush chorus phaser tremolo reverb eq</pre>
+      filter delay pingpong distortion bitcrush chorus phaser tremolo reverb eq
+      wah autopan autofilter vibrato pitchshift freqshift chebyshev widener
+      compressor limiter · sweep any param: "ramp":{"param":"frequency",
+      "to":6000,"at":0,"len":16}   (beats)
+tools per track: "repeat":4 (loop pattern) "transpose":-12 "offsetBeats":2
+      "humanize":0.3 · MD: x4 tr -12 off 2 hum 0.3
+ABC   directives: %%agentscore {"fx":[…]} · %%MIDI program 33 · V:1 name="supersaw"</pre>
       </div>
     </details>
   </main>

@@ -9,6 +9,16 @@
 // barlines, repeats |: :| and 1st/2nd endings, multiple voices -> tracks.
 // Ignored: slurs, ties, grace notes, decorations, chord-symbol annotations,
 // lyrics. Durations are snapped to AgentScore's note-value vocabulary.
+//
+// PRODUCTION DIRECTIVES — ABC is notation-only, so AgentScore reads three ways
+// to carry production inside an ABC file:
+//   %%MIDI program 81        -> maps the GM program to an AgentScore instrument
+//   %%MIDI channel 10        -> drum kit
+//   V:2 name="supersaw"      -> a voice name that matches an instrument id
+//   %%agentscore {"fx":[{"type":"wah"}],"volume":-10}   -> any track fields
+//   %%agentscore {"master":{"reverb":0.3},"swing":0.1}  -> any song fields
+// Directives apply to the current voice (or the song for song-level keys).
+import { SYNTHS, SAMPLED } from "./instruments.js";
 
 const LETTER_SEMI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -180,6 +190,48 @@ function parseMusic(line, st, voice) {
   }
 }
 
+// ---- production directives ----
+const DRUM_KIT_IDS = ["drumkit", "kit808", "kit909"];
+const GM_TO_ID = [
+  [0, 7, "piano"], [8, 8, "celesta"], [9, 9, "glocken"], [10, 10, "music-box"], [11, 11, "vibraphone"],
+  [12, 12, "marimba"], [13, 13, "xylophone"], [14, 15, "tubular-bell"],
+  [16, 18, "drawbar"], [19, 20, "organ"], [21, 23, "harmonium"],
+  [24, 24, "guitar-nylon"], [25, 25, "guitar-acoustic"], [26, 31, "guitar-electric"], [32, 39, "bass-electric"],
+  [40, 41, "violin"], [42, 42, "cello"], [43, 43, "contrabass"], [44, 44, "tremolo-strings"], [45, 45, "pizzicato"],
+  [46, 46, "harp"], [47, 47, "impact"], [48, 51, "synth-strings"], [52, 54, "choir-pad"], [55, 55, "brass-stab"],
+  [56, 56, "trumpet"], [57, 57, "trombone"], [58, 58, "tuba"], [59, 59, "trumpet-ish"], [60, 60, "french-horn"], [61, 63, "synth-brass"],
+  [64, 67, "saxophone"], [68, 69, "breathy"], [70, 70, "bassoon"], [71, 71, "clarinet"],
+  [72, 72, "ocarina"], [73, 73, "flute"], [74, 75, "pan-flute"], [76, 79, "ocarina"],
+  [80, 80, "square-lead"], [81, 81, "saw-lead"], [82, 83, "pwm-lead"], [84, 84, "soft-lead"], [85, 85, "whistle"],
+  [86, 86, "uni-lead"], [87, 87, "fm-bass"], [88, 95, "warm-pad"], [96, 103, "shimmer-pad"],
+  [104, 104, "sitar"], [105, 105, "banjo"], [106, 107, "koto"], [108, 108, "kalimba"], [109, 111, "solo-violin"],
+  [112, 118, "steel-drum"], [119, 127, "noise-sweep"],
+];
+function gmToInstrument(n) { for (const [a, b, id] of GM_TO_ID) if (n >= a && n <= b) return id; return "piano"; }
+function knownInstrument(id) { return id in SYNTHS || id in SAMPLED || DRUM_KIT_IDS.includes(id); }
+
+const TRACK_KEYS = new Set(["instrument", "volume", "pan", "mute", "solo", "fx", "repeat", "transpose", "offsetBeats", "humanize", "name"]);
+const SONG_KEYS = new Set(["master", "swing", "tempo", "title", "instruments"]);
+function applyDirective(name, arg, st, voice) {
+  if (name === "midi") {
+    let m = /^program\s+(?:\d+\s+)?(\d+)/i.exec(arg);
+    if (m) { voice.prod.instrument = gmToInstrument(+m[1]); return; }
+    m = /^channel\s+(\d+)/i.exec(arg);
+    if (m && +m[1] === 10) voice.prod.instrument = "drumkit";
+    return;
+  }
+  if (name === "agentscore") {
+    try {
+      const obj = JSON.parse(arg);
+      if (!obj || typeof obj !== "object") return;
+      for (const [k, v] of Object.entries(obj)) {
+        if (SONG_KEYS.has(k)) st.songProd[k] = v;
+        else if (TRACK_KEYS.has(k)) voice.prod[k] = v;
+      }
+    } catch (e) { /* malformed directive json — ignored */ }
+  }
+}
+
 function applyField(letter, value, st) {
   value = (value || "").trim();
   if (letter === "M") { st.meter = meterValue(value); }
@@ -223,19 +275,32 @@ function expand(events) {
 
 export function abcToSong(text) {
   const lines = String(text).replace(/\r/g, "").split("\n");
-  const st = { meter: [4, 4], unit: null, tempo: 120, key: {}, barAcc: {} };
+  const st = { meter: [4, 4], unit: null, tempo: 120, key: {}, barAcc: {}, songProd: {} };
   const voices = {}; let curV = "1"; let title = "Untitled"; let inBody = false;
-  const getVoice = (id) => (voices[id] || (voices[id] = { id, events: [], order: Object.keys(voices).length }));
+  const getVoice = (id) => (voices[id] || (voices[id] = { id, events: [], prod: {}, order: Object.keys(voices).length }));
   getVoice("1");
 
   for (let raw of lines) {
     const line = raw.replace(/^\s+/, "");
-    if (!line || line.startsWith("%")) continue;
+    if (!line) continue;
+    if (line.startsWith("%%")) {                                  // production directive
+      const d = /^%%(\S+)\s*(.*)$/.exec(line);
+      if (d) applyDirective(d[1].toLowerCase(), d[2], st, getVoice(curV));
+      continue;
+    }
+    if (line.startsWith("%")) continue;
     const fm = /^([A-Za-z]):(.*)$/.exec(line);
     if (fm && (!inBody || "XTMLKQVCORPZNGHBDFSWwA".includes(fm[1]))) {
       const L = fm[1], val = fm[2].trim();
       if (L === "T" && title === "Untitled") title = val || title;
-      else if (L === "V") { const id = (val.split(/\s+/)[0] || "1"); curV = id; getVoice(id); st.barAcc = {}; }
+      else if (L === "V") {
+        const id = (val.split(/\s+/)[0] || "1"); curV = id; getVoice(id); st.barAcc = {};
+        const nm = /(?:name|nm)="([^"]+)"/.exec(val);             // V:2 name="supersaw"
+        if (nm) {
+          if (knownInstrument(nm[1])) getVoice(id).prod.instrument = nm[1];
+          else getVoice(id).prod.name = nm[1];
+        }
+      }
       else if (L === "K") { applyField("K", val, st); inBody = true; if (st.unit == null) st.unit = (st.meter[0] / st.meter[1] < 0.75 ? 1 / 16 : 1 / 8); }
       else applyField(L, val, st);
       if (L === "W" || L === "w") continue;
@@ -260,12 +325,19 @@ export function abcToSong(text) {
         else notes.push({ note: ev.note, dur, vel: 0.8 });
       });
     }
-    return { name: list.length > 1 ? `Voice ${v.id}` : "ABC", instrument: "piano", volume: -8, pan: 0, notes };
+    const base = { name: list.length > 1 ? `Voice ${v.id}` : "ABC", instrument: "piano", volume: -8, pan: 0, notes };
+    return { ...base, ...v.prod };                  // %%agentscore / %%MIDI / V:name production wins
   });
 
+  const sp = st.songProd;
   return {
-    title, tempo: st.tempo || 120, timeSignature: `${st.meter[0]}/${st.meter[1]}`,
-    swing: 0, master: { volume: -6, reverb: 0.2 }, instruments: {}, tracks,
+    title: typeof sp.title === "string" ? sp.title : title,
+    tempo: Number.isFinite(+sp.tempo) && +sp.tempo > 0 ? +sp.tempo : (st.tempo || 120),
+    timeSignature: `${st.meter[0]}/${st.meter[1]}`,
+    swing: Number.isFinite(+sp.swing) ? +sp.swing : 0,
+    master: (sp.master && typeof sp.master === "object") ? { volume: -6, reverb: 0.2, ...sp.master } : { volume: -6, reverb: 0.2 },
+    instruments: (sp.instruments && typeof sp.instruments === "object") ? sp.instruments : {},
+    tracks,
   };
 }
 

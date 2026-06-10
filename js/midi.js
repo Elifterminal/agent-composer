@@ -4,6 +4,7 @@
 // program so it opens with a sensible sound in a DAW; `drumkit` tracks go to
 // channel 10 (GM drums).
 import { SYNTHS, SAMPLED } from "./instruments.js";
+import { isDrumKit } from "./audio.js";
 const Tone = window.Tone;
 
 // instrument id -> General MIDI program (0-indexed). Specific ids first, then a
@@ -56,17 +57,23 @@ function noteToMidi(n) {
 }
 
 // Build one MThd-less track chunk body (the event stream) for a song track.
+// Honors the track tools: repeat (pattern x N), transpose (pitched only) and
+// offsetBeats; humanize is an audio-render concern and is not baked into MIDI.
 function trackEvents(track, ch, isDrum) {
   // collect absolute-tick on/off events, then serialize as deltas
   const evs = [];
-  let tick = 0;
-  for (const n of track.notes) {
+  const ppq = Tone.Transport.PPQ;
+  const repeat = Math.max(1, Math.min(64, Math.round(track.repeat || 1)));
+  const semis = isDrum ? 0 : Math.round(track.transpose || 0);
+  let tick = Math.round(Math.max(0, +track.offsetBeats || 0) * ppq);
+  for (let r = 0; r < repeat; r++) for (const n of track.notes) {
     if (n.rest != null) { tick += durToTicks(n.rest); continue; }
     const d = durToTicks(n.dur);
     const vel = Math.max(1, Math.min(127, Math.round((n.vel ?? 0.85) * 127)));
     const pitches = (Array.isArray(n.note) ? n.note : [n.note])
       .map((p) => isDrum ? (GM_DRUM[String(p).toLowerCase()] ?? null) : noteToMidi(p))
-      .filter((m) => m != null);
+      .filter((m) => m != null)
+      .map((m) => Math.max(0, Math.min(127, m + semis)));
     for (const m of pitches) {
       evs.push({ t: tick, on: true, m, vel });
       evs.push({ t: tick + d, on: false, m, vel: 0 });
@@ -112,7 +119,7 @@ export function songToMidiBlob(song) {
   trackChunks.push(chunk("MTrk", [...metaTrack(song), ...EOT]));
   let nextCh = 0;                                    // melodic tracks get their own channel (skip 9 = drums)
   for (const t of song.tracks) {
-    const isDrum = t.instrument === "drumkit";
+    const isDrum = isDrumKit(t.instrument);
     let ch;
     if (isDrum) ch = 9;
     else { if (nextCh === 9) nextCh = 10; ch = Math.min(15, nextCh); nextCh++; }

@@ -3,6 +3,7 @@
 // pitches per row (a quantized piano-roll). Clicking a cell cycles its velocity.
 // The whole thing compiles to a standard AgentScore song, so Play / MIDI / WAV /
 // engrave all keep working unchanged. No dependencies beyond Tone (for note math).
+import { isDrumKit } from "./audio.js";
 const Tone = window.Tone;
 
 // scale semitone offsets (root = 0)
@@ -29,7 +30,7 @@ const LEVEL_VEL = [0, 1.0, 0.66, 0.4];
 let _uid = 0;
 function newTrack(instrument = "drumkit") {
   return {
-    id: ++_uid, name: instrument === "drumkit" ? "Drums" : "Synth",
+    id: ++_uid, name: isDrumKit(instrument) ? "Drums" : "Synth",
     instrument, volume: -8, pan: 0, mute: false,
     scale: "penta-minor", root: "C", baseOct: 3, octaves: 2,
     cells: {},                 // key `${rowNote}@${step}` -> level 1..3
@@ -51,7 +52,7 @@ export function createSequencer({ mount, catalog, onChange }) {
 
   // rows for a track, top (high) → bottom (low)
   function rowsFor(t) {
-    if (t.instrument === "drumkit") return DRUM_ROWS.map((d) => ({ note: d, label: d }));
+    if (isDrumKit(t.instrument)) return DRUM_ROWS.map((d) => ({ note: d, label: d }));
     const offs = SCALES[t.scale] || SCALES["penta-minor"];
     let base;
     try { base = Tone.Frequency(`${t.root}${t.baseOct}`).toMidi(); } catch (e) { base = 48; }
@@ -165,7 +166,7 @@ export function createSequencer({ mount, catalog, onChange }) {
     inst.addEventListener("change", () => { t.instrument = inst.value; t.cells = {}; render(); fire(); });
     head.appendChild(inst);
 
-    if (t.instrument !== "drumkit") {
+    if (!isDrumKit(t.instrument)) {
       const sc = el("select", "seq-scale"); Object.keys(SCALES).forEach((s) => opt(sc, s, s, t.scale));
       sc.addEventListener("change", () => { t.scale = sc.value; render(); fire(); });
       head.appendChild(sc);

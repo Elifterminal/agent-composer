@@ -7,7 +7,7 @@
 // become chords, gaps become rests), so the JSON/MD text agents edit stays the
 // single source of truth. Overlaps the format can't express auto-trim the
 // earlier note — classic mono-stream behavior, shown honestly in the roll.
-import { DRUMS } from "./audio.js";
+import { DRUMS, isDrumKit } from "./audio.js";
 
 const EPS = 1e-4;
 // representable single-token durations, in beats, descending (incl. dotted + triplet)
@@ -150,13 +150,13 @@ export function createPianoRoll({ mount, onEdit }) {
     if (!track) { state.notes = []; state.rows = []; draw(); return; }
     const { notes, length } = parseTrack(track);
     state.notes = notes; state.length = length; state.sel = null;
-    state.isDrum = track.instrument === "drumkit";
+    state.isDrum = isDrumKit(track.instrument);
     state.rows = buildRows(track, notes);
     draw();
   }
 
   function buildRows(track, notes) {
-    if (track.instrument === "drumkit") {
+    if (isDrumKit(track.instrument)) {
       return [...DRUMS].reverse().map((d) => ({ pitch: d, label: d, black: false }));
     }
     // melodic: span the content with padding, min two octaves

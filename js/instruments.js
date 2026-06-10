@@ -26,6 +26,11 @@ export const SYNTHS = {
   "fm-bass":     { label: "FM Bass",      cat: "Bass", ctor: "FMSynth", gain: -6, opts: { harmonicity: 1, modulationIndex: 6, oscillator: { type: "sine" }, envelope: env(.005, .2, .6, .2), modulation: { type: "square" }, modulationEnvelope: env(.005, .2, .2, .1) } },
   "square-bass": { label: "Square Bass",  cat: "Bass", ctor: "MonoSynth", gain: -7, opts: { oscillator: { type: "square" }, envelope: env(.005, .12, .5, .15), filterEnvelope: { baseFrequency: 180, octaves: 2 } } },
   "wobble-bass": { label: "Wobble Bass",  cat: "Bass", ctor: "FMSynth", gain: -7, opts: { harmonicity: .5, modulationIndex: 10, oscillator: { type: "sawtooth" }, envelope: env(.01, .2, .8, .2), modulation: { type: "sine" }, modulationEnvelope: env(.2, .2, .8, .4) } },
+  "moog-bass":   { label: "Moog Bass",    cat: "Bass", ctor: "MonoSynth", gain: -5, opts: { oscillator: { type: "fattriangle", count: 2, spread: 12 }, envelope: env(.005, .25, .6, .25), filter: { Q: 3 }, filterEnvelope: { baseFrequency: 150, octaves: 3, attack: .01, decay: .35, sustain: .25, release: .3 } } },
+  "rubber-bass": { label: "Rubber Bass",  cat: "Bass", ctor: "FMSynth", gain: -6, opts: { harmonicity: 2, modulationIndex: 4, oscillator: { type: "sine" }, envelope: env(.004, .25, .3, .2), modulation: { type: "sine" }, modulationEnvelope: env(.004, .15, 0, .1) } },
+  "pick-bass":   { label: "Pick Bass",    cat: "Bass", ctor: "MonoSynth", gain: -6, opts: { oscillator: { type: "sawtooth" }, envelope: env(.002, .18, .25, .12), filter: { Q: 1.5 }, filterEnvelope: { baseFrequency: 350, octaves: 2, decay: .12, sustain: .2 } } },
+  "organ-bass":  { label: "Organ Bass",   cat: "Bass", ctor: "Synth", gain: -6, opts: { oscillator: { type: "fatsine", count: 2, spread: 6 }, envelope: env(.01, .05, .95, .12) } },
+  "growl-bass":  { label: "Growl Bass",   cat: "Bass", ctor: "AMSynth", gain: -6, opts: { harmonicity: 2.5, oscillator: { type: "sawtooth" }, envelope: env(.01, .2, .7, .2), modulation: { type: "square" } } },
 
   // ---------------- Lead ----------------
   "saw-lead":    { label: "Saw Lead",     cat: "Lead", ctor: "Synth", gain: -8, opts: { oscillator: { type: "sawtooth" }, envelope: env(.01, .1, .6, .3) } },
@@ -34,12 +39,21 @@ export const SYNTHS = {
   "fm-lead":     { label: "FM Lead",      cat: "Lead", ctor: "FMSynth", gain: -9, opts: { harmonicity: 2, modulationIndex: 4, oscillator: { type: "sine" }, envelope: env(.01, .15, .6, .3), modulation: { type: "triangle" } } },
   "sync-lead":   { label: "Sync Lead",    cat: "Lead", ctor: "Synth", gain: -9, opts: { oscillator: { type: "fatsquare", count: 3, spread: 20 }, envelope: env(.005, .1, .5, .2) } },
   "pwm-lead":    { label: "PWM Lead",     cat: "Lead", ctor: "Synth", gain: -9, opts: { oscillator: { type: "pwm", modulationFrequency: 0.4 }, envelope: env(.01, .1, .7, .3) } },
+  "uni-lead":    { label: "Unison Lead",  cat: "Lead", ctor: "Synth", gain: -11, opts: { oscillator: { type: "fatsawtooth", count: 7, spread: 50 }, envelope: env(.03, .2, .75, .4) } },
+  "whistle":     { label: "Whistle",      cat: "Lead", ctor: "Synth", gain: -8, opts: { oscillator: { type: "sine" }, envelope: env(.05, .1, .8, .2) } },
+  "theremin":    { label: "Theremin",     cat: "Lead", ctor: "MonoSynth", gain: -8, opts: { portamento: .08, oscillator: { type: "sine" }, envelope: env(.1, .1, .9, .3), filterEnvelope: { baseFrequency: 2000, octaves: 0 } } },
+  "dist-lead":   { label: "Distorted Lead", cat: "Lead", ctor: "Synth", gain: -10, opts: { oscillator: { type: "fatsquare", count: 4, spread: 35 }, envelope: env(.005, .12, .65, .25) } },
+  "soft-lead":   { label: "Soft Lead",    cat: "Lead", ctor: "AMSynth", gain: -8, opts: { harmonicity: 1.01, oscillator: { type: "triangle" }, envelope: env(.04, .15, .7, .35), modulation: { type: "sine" } } },
 
   // ---------------- Keys ----------------
   "e-piano":     { label: "Electric Piano", cat: "Keys", ctor: "FMSynth", gain: -7, opts: { harmonicity: 3, modulationIndex: 8, oscillator: { type: "sine" }, envelope: env(.002, .6, .1, .8), modulation: { type: "sine" }, modulationEnvelope: env(.002, .4, 0, .3) } },
   "rhodes":      { label: "Rhodes",       cat: "Keys", ctor: "FMSynth", gain: -7, opts: { harmonicity: 5, modulationIndex: 6, oscillator: { type: "sine" }, envelope: env(.002, .8, .2, 1), modulation: { type: "sine" }, modulationEnvelope: env(.002, .5, 0, .4) } },
   "clav":        { label: "Clavinet",     cat: "Keys", ctor: "Synth", gain: -8, opts: { oscillator: { type: "square" }, envelope: env(.002, .12, .15, .15) } },
   "synth-piano": { label: "Synth Piano",  cat: "Keys", ctor: "Synth", gain: -7, opts: { oscillator: { type: "triangle" }, envelope: env(.002, .5, .15, .8) } },
+  "harpsichord": { label: "Harpsichord",  cat: "Keys", ctor: "Synth", gain: -8, opts: { oscillator: { type: "square" }, envelope: env(.001, .4, .05, .25) } },
+  "celesta":     { label: "Celesta",      cat: "Keys", ctor: "FMSynth", gain: -8, opts: { harmonicity: 4.99, modulationIndex: 6, oscillator: { type: "sine" }, envelope: env(.001, .7, 0, .6), modulation: { type: "sine" }, modulationEnvelope: env(.001, .3, 0, .2) } },
+  "toy-piano":   { label: "Toy Piano",    cat: "Keys", ctor: "FMSynth", gain: -8, opts: { harmonicity: 7.99, modulationIndex: 9, oscillator: { type: "sine" }, envelope: env(.001, .35, 0, .3), modulation: { type: "sine" }, modulationEnvelope: env(.001, .15, 0, .1) } },
+  "wurli":       { label: "Wurlitzer",    cat: "Keys", ctor: "AMSynth", gain: -7, opts: { harmonicity: 2, oscillator: { type: "sine" }, envelope: env(.003, .5, .15, .6), modulation: { type: "sine" } } },
 
   // ---------------- Pad ----------------
   "warm-pad":    { label: "Warm Pad",     cat: "Pad", ctor: "AMSynth", gain: -13, opts: { harmonicity: 2, oscillator: { type: "fatsine", count: 3, spread: 20 }, envelope: env(.6, .4, .9, 1.2), modulation: { type: "sine" } } },
@@ -47,11 +61,19 @@ export const SYNTHS = {
   "glass-pad":   { label: "Glass Pad",    cat: "Pad", ctor: "FMSynth", gain: -14, opts: { harmonicity: 3.01, modulationIndex: 2, oscillator: { type: "sine" }, envelope: env(.8, .5, .8, 1.5), modulation: { type: "sine" } } },
   "choir-pad":   { label: "Choir Pad",    cat: "Pad", ctor: "AMSynth", gain: -13, opts: { harmonicity: 1.5, oscillator: { type: "fattriangle", count: 3, spread: 30 }, envelope: env(.7, .4, .9, 1.6), modulation: { type: "triangle" } } },
   "dark-pad":    { label: "Dark Pad",     cat: "Pad", ctor: "DuoSynth", gain: -14, opts: { harmonicity: 1.5, voice0: { oscillator: { type: "sawtooth" }, envelope: env(.8, .4, .8, 1.4) }, voice1: { oscillator: { type: "sine" }, detune: -1200, envelope: env(.8, .4, .8, 1.4) } } },
+  "shimmer-pad": { label: "Shimmer Pad",  cat: "Pad", ctor: "FMSynth", gain: -14, opts: { harmonicity: 2.001, modulationIndex: 1.5, oscillator: { type: "fatsine", count: 4, spread: 40 }, envelope: env(1, .5, .85, 2), modulation: { type: "sine" } } },
+  "sweep-pad":   { label: "Sweep Pad",    cat: "Pad", ctor: "Synth", gain: -14, opts: { oscillator: { type: "pwm", modulationFrequency: .15 }, envelope: env(.9, .4, .85, 1.6) } },
+  "vocal-pad":   { label: "Vocal Pad",    cat: "Pad", ctor: "AMSynth", gain: -13, opts: { harmonicity: 1.25, oscillator: { type: "fattriangle", count: 3, spread: 22 }, envelope: env(.6, .3, .9, 1.3), modulation: { type: "sine" } } },
+  "space-pad":   { label: "Space Pad",    cat: "Pad", ctor: "DuoSynth", gain: -15, opts: { harmonicity: 2.01, vibratoAmount: .2, vibratoRate: .4, voice0: { oscillator: { type: "sine" }, envelope: env(1.2, .5, .85, 2.2) }, voice1: { oscillator: { type: "triangle" }, detune: 7, envelope: env(1.2, .5, .85, 2.2) } } },
+  "drone":       { label: "Drone",        cat: "Pad", ctor: "Synth", gain: -14, opts: { oscillator: { type: "fatsawtooth", count: 6, spread: 16 }, envelope: env(1.5, .2, 1, 2.5) } },
 
   // ---------------- Pluck ----------------
   "pluck":       { label: "Pluck",        cat: "Pluck", ctor: "PluckSynth", mono: true, gain: -5, opts: { attackNoise: 1, dampening: 4000, resonance: .9 } },
   "harp":        { label: "Harp",         cat: "Pluck", ctor: "PluckSynth", mono: true, gain: -5, opts: { attackNoise: .5, dampening: 6000, resonance: .95 } },
   "koto":        { label: "Koto",         cat: "Pluck", ctor: "PluckSynth", mono: true, gain: -5, opts: { attackNoise: 2, dampening: 3000, resonance: .85 } },
+  "banjo":       { label: "Banjo",        cat: "Pluck", ctor: "PluckSynth", mono: true, gain: -5, opts: { attackNoise: 3, dampening: 2600, resonance: .8 } },
+  "sitar":       { label: "Sitar (synth)", cat: "Pluck", ctor: "PluckSynth", mono: true, gain: -5, opts: { attackNoise: 1.5, dampening: 5200, resonance: .98 } },
+  "dulcimer":    { label: "Dulcimer",     cat: "Pluck", ctor: "FMSynth", gain: -7, opts: { harmonicity: 2, modulationIndex: 5, oscillator: { type: "triangle" }, envelope: env(.002, .9, 0, .7), modulation: { type: "sine" }, modulationEnvelope: env(.002, .4, 0, .3) } },
 
   // ---------------- Mallet ----------------
   "marimba":     { label: "Marimba",      cat: "Mallet", ctor: "FMSynth", gain: -6, opts: { harmonicity: 4, modulationIndex: 2, oscillator: { type: "sine" }, envelope: env(.002, .3, 0, .3), modulation: { type: "sine" }, modulationEnvelope: env(.002, .2, 0, .2) } },
@@ -59,18 +81,33 @@ export const SYNTHS = {
   "bell":        { label: "Bell",         cat: "Mallet", ctor: "FMSynth", gain: -8, opts: { harmonicity: 3.01, modulationIndex: 14, oscillator: { type: "sine" }, envelope: env(.001, 1.2, 0, 1.2), modulation: { type: "sine" }, modulationEnvelope: env(.001, .7, 0, .5) } },
   "music-box":   { label: "Music Box",    cat: "Mallet", ctor: "FMSynth", gain: -8, opts: { harmonicity: 6, modulationIndex: 10, oscillator: { type: "sine" }, envelope: env(.001, .8, 0, .8), modulation: { type: "sine" }, modulationEnvelope: env(.001, .4, 0, .3) } },
   "glocken":     { label: "Glockenspiel", cat: "Mallet", ctor: "FMSynth", gain: -10, opts: { harmonicity: 8.5, modulationIndex: 18, oscillator: { type: "sine" }, envelope: env(.001, .6, 0, .5), modulation: { type: "sine" }, modulationEnvelope: env(.001, .3, 0, .2) } },
+  "vibraphone":  { label: "Vibraphone",   cat: "Mallet", ctor: "FMSynth", gain: -8, opts: { harmonicity: 4, modulationIndex: 3, oscillator: { type: "sine" }, envelope: env(.002, 1.6, .05, 1.4), modulation: { type: "sine" }, modulationEnvelope: env(.002, .8, 0, .6) } },
+  "steel-drum":  { label: "Steel Drum",   cat: "Mallet", ctor: "FMSynth", gain: -7, opts: { harmonicity: 3.8, modulationIndex: 7, oscillator: { type: "sine" }, envelope: env(.001, .45, 0, .35), modulation: { type: "sine" }, modulationEnvelope: env(.001, .2, 0, .15) } },
+  "tubular-bell":{ label: "Tubular Bell", cat: "Mallet", ctor: "FMSynth", gain: -10, opts: { harmonicity: 3.5, modulationIndex: 20, oscillator: { type: "sine" }, envelope: env(.001, 2.5, 0, 2.5), modulation: { type: "sine" }, modulationEnvelope: env(.001, 1.2, 0, .8) } },
+  "gamelan":     { label: "Gamelan",      cat: "Mallet", ctor: "FMSynth", gain: -9, opts: { harmonicity: 5.04, modulationIndex: 12, oscillator: { type: "sine" }, envelope: env(.001, 1, 0, .9), modulation: { type: "sine" }, modulationEnvelope: env(.001, .5, 0, .4) } },
 
   // ---------------- Brass ----------------
   "synth-brass": { label: "Synth Brass",  cat: "Brass", ctor: "Synth", gain: -10, opts: { oscillator: { type: "fatsawtooth", count: 3, spread: 18 }, envelope: env(.06, .2, .8, .3) } },
   "trumpet-ish": { label: "Trumpet (synth)", cat: "Brass", ctor: "FMSynth", gain: -9, opts: { harmonicity: 1, modulationIndex: 5, oscillator: { type: "sawtooth" }, envelope: env(.04, .2, .8, .2), modulation: { type: "square" } } },
+  "horn-synth":  { label: "Horn (synth)", cat: "Brass", ctor: "AMSynth", gain: -9, opts: { harmonicity: 1, oscillator: { type: "sawtooth" }, envelope: env(.09, .25, .8, .35), modulation: { type: "sine" } } },
+  "brass-stab":  { label: "Brass Stab",   cat: "Brass", ctor: "Synth", gain: -9, opts: { oscillator: { type: "fatsawtooth", count: 4, spread: 24 }, envelope: env(.01, .25, .3, .15) } },
 
   // ---------------- Strings ----------------
   "synth-strings": { label: "Synth Strings", cat: "Strings", ctor: "Synth", gain: -12, opts: { oscillator: { type: "fatsawtooth", count: 5, spread: 35 }, envelope: env(.25, .3, .9, .8) } },
   "pizzicato":   { label: "Pizzicato",    cat: "Strings", ctor: "Synth", gain: -8, opts: { oscillator: { type: "sawtooth" }, envelope: env(.002, .15, 0, .15) } },
+  "tremolo-strings": { label: "Tremolo Strings", cat: "Strings", ctor: "AMSynth", gain: -12, opts: { harmonicity: .25, oscillator: { type: "fatsawtooth", count: 4, spread: 30 }, envelope: env(.2, .3, .9, .7), modulation: { type: "square" } } },
+  "solo-violin": { label: "Violin (synth)", cat: "Strings", ctor: "FMSynth", gain: -10, opts: { harmonicity: 1, modulationIndex: 1.6, oscillator: { type: "sawtooth" }, envelope: env(.12, .2, .85, .4), modulation: { type: "sine" } } },
 
   // ---------------- Organ ----------------
   "organ":       { label: "Organ",        cat: "Organ", ctor: "Synth", gain: -10, opts: { oscillator: { type: "fatsine", count: 4, spread: 8 }, envelope: env(.01, .05, 1, .1) } },
   "rock-organ":  { label: "Rock Organ",   cat: "Organ", ctor: "Synth", gain: -10, opts: { oscillator: { type: "fatsquare", count: 3, spread: 12 }, envelope: env(.01, .05, 1, .1) } },
+  "cathedral":   { label: "Cathedral Organ", cat: "Organ", ctor: "Synth", gain: -11, opts: { oscillator: { type: "fatsine", count: 6, spread: 10 }, envelope: env(.06, .1, 1, .9) } },
+  "drawbar":     { label: "Drawbar Organ", cat: "Organ", ctor: "AMSynth", gain: -10, opts: { harmonicity: 3, oscillator: { type: "sine" }, envelope: env(.005, .02, 1, .08), modulation: { type: "sine" } } },
+
+  // ---------------- Wind (synth) ----------------
+  "pan-flute":   { label: "Pan Flute",    cat: "Woodwind", ctor: "AMSynth", gain: -8, opts: { harmonicity: 2, oscillator: { type: "sine" }, envelope: env(.07, .15, .75, .25), modulation: { type: "triangle" } } },
+  "ocarina":     { label: "Ocarina",      cat: "Woodwind", ctor: "Synth", gain: -8, opts: { oscillator: { type: "sine" }, envelope: env(.04, .1, .85, .15) } },
+  "breathy":     { label: "Breathy Flute", cat: "Woodwind", ctor: "AMSynth", gain: -9, opts: { harmonicity: 3.5, oscillator: { type: "triangle" }, envelope: env(.09, .2, .7, .3), modulation: { type: "sine" } } },
 
   // ---------------- generic / back-compat ----------------
   "synth":       { label: "Synth (clean)", cat: "Synth", ctor: "Synth", gain: -6, opts: { oscillator: { type: "triangle" }, envelope: env(.005, .1, .3, .4) } },
@@ -84,10 +121,16 @@ export const SYNTHS = {
   "chip-pulse":  { label: "Chip Pulse",   cat: "Chip", ctor: "Synth", gain: -10, opts: { oscillator: { type: "pulse", width: .3 }, envelope: env(.001, .05, .4, .08) } },
   "chip-square": { label: "Chip Square",  cat: "Chip", ctor: "Synth", gain: -10, opts: { oscillator: { type: "square" }, envelope: env(.001, .04, .5, .06) } },
   "chip-tri":    { label: "Chip Triangle", cat: "Chip", ctor: "Synth", gain: -9, opts: { oscillator: { type: "triangle" }, envelope: env(.001, .05, .6, .06) } },
+  "chip-saw":    { label: "Chip Saw",     cat: "Chip", ctor: "Synth", gain: -10, opts: { oscillator: { type: "sawtooth" }, envelope: env(.001, .04, .45, .06) } },
+  "chip-arp":    { label: "Chip Arp",     cat: "Chip", ctor: "Synth", gain: -10, opts: { oscillator: { type: "pulse", width: .18 }, envelope: env(.001, .03, .25, .04) } },
 
   // ---------------- FX ----------------
   "noise-sweep": { label: "Noise Sweep",  cat: "FX", ctor: "NoiseSynth", mono: true, gain: -16, isNoise: true, opts: { noise: { type: "white" }, envelope: env(.3, .1, .3, .6) } },
   "zap":         { label: "Zap",          cat: "FX", ctor: "MembraneSynth", mono: true, gain: -8, opts: { octaves: 8, pitchDecay: .2, envelope: env(.001, .3, 0, .1) } },
+  "riser":       { label: "Riser",        cat: "FX", ctor: "NoiseSynth", mono: true, gain: -16, isNoise: true, opts: { noise: { type: "pink" }, envelope: env(1.2, .1, .8, .4) } },
+  "impact":      { label: "Impact",       cat: "FX", ctor: "MembraneSynth", mono: true, gain: -6, opts: { octaves: 5, pitchDecay: .9, envelope: env(.001, 1.1, 0, .6) } },
+  "wind":        { label: "Wind",         cat: "FX", ctor: "NoiseSynth", mono: true, gain: -18, isNoise: true, opts: { noise: { type: "pink" }, envelope: env(.8, .3, .7, 1.2) } },
+  "static":      { label: "Static",       cat: "FX", ctor: "NoiseSynth", mono: true, gain: -18, isNoise: true, opts: { noise: { type: "white" }, envelope: env(.005, .08, .2, .1) } },
 };
 
 // ---------------------------------------------------------------------------
@@ -161,6 +204,17 @@ export const TRIM = {
   "synth": 1, "Synth": 1, "AMSynth": 5.5, "MonoSynth": -6, "DuoSynth": -8,
   // chip / fx
   "chip-pulse": -2, "chip-square": -2.5, "chip-tri": -2, "noise-sweep": 9,
+  // 2026-06-10 expansion (same harness: active-RMS on C4/C2 toward −24 dBFS)
+  "rubber-bass": 9, "pick-bass": 4, "organ-bass": -4.5, "growl-bass": 9,
+  "uni-lead": 5, "whistle": -6, "theremin": -7, "soft-lead": 9,
+  "harpsichord": 7.5, "celesta": 9, "toy-piano": 9, "wurli": 9,
+  "shimmer-pad": 9, "sweep-pad": -1.5, "vocal-pad": 9, "drone": 9,
+  "banjo": 9, "sitar": 9, "dulcimer": 9,
+  "vibraphone": 9, "steel-drum": 9, "tubular-bell": 9, "gamelan": 9,
+  "horn-synth": 9, "brass-stab": 9, "tremolo-strings": 9, "solo-violin": 9,
+  "cathedral": -1.5, "drawbar": 9, "pan-flute": 9, "ocarina": -7, "breathy": 9,
+  "chip-saw": 3.5, "chip-arp": 2.5, "riser": 9, "wind": 9, "static": 9,
+  "kit808": -4.5, "kit909": -3,
 };
 
 export function sampledList() {

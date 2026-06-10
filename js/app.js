@@ -195,6 +195,53 @@ window.addEventListener("drop", async (e) => {
   loadText(f.name, await f.text());
 });
 
+// ---------- #score= hash (shareable links / app-to-app handoff) ----------
+// #score=<base64 of JSON, MD or ABC text> loads on boot. UTF-8 safe both ways.
+function b64ToText(b64) { return new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))); }
+function textToB64(text) { return btoa(String.fromCharCode(...new TextEncoder().encode(text))); }
+function tryHashScore() {
+  const m = /[#&]score=([^&]+)/.exec(location.hash);
+  if (!m) return false;
+  try {
+    const text = b64ToText(decodeURIComponent(m[1]));
+    loadText(`shared.${sniffFmt(text)}`, text);
+    return true;
+  } catch (e) { return false; }
+}
+
+// ---------- VocalEyes bridge ----------
+// When AgentScore is served inside VocalEyes (vendored under /agentscore/), the
+// VocalEyes editor API lives on the same origin. Feature-detect it and offer a
+// one-click "render -> Studio asset" handoff. On GitHub Pages this 404s and the
+// button simply never appears.
+async function detectVocalEyes() {
+  try {
+    const r = await fetch("/api/edit/list", { method: "GET" });
+    if (!r.ok) return;
+    const btn = document.createElement("button");
+    btn.id = "veBtn"; btn.title = "render the mix and add it to the VocalEyes Studio library";
+    btn.textContent = "→ VocalEyes";
+    els.stemsBtn.after(btn);
+    btn.addEventListener("click", async () => {
+      const song = getSong(); if (!song) return;
+      btn.disabled = true; const orig = btn.textContent; btn.textContent = "⏳ rendering…";
+      try {
+        await Tone.start();
+        const wav = await renderWav(song, els.loop.checked ? 0 : 2.5);
+        btn.textContent = "⏳ uploading…";
+        const name = `${slug(song.title)}.wav`;
+        const res = await fetch(`/api/edit/upload?name=${encodeURIComponent(name)}`, {
+          method: "POST", headers: { "Content-Type": "audio/wav" }, body: wav,
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || `upload failed: ${res.status}`);
+        els.readout.textContent = `✓ sent to VocalEyes Studio as ${name}`;
+      } catch (e) { showError("VocalEyes handoff failed: " + e.message); }
+      btn.disabled = false; btn.textContent = orig;
+    });
+  } catch (e) { /* not running inside VocalEyes */ }
+}
+
 // ---------- transport ----------
 async function play() {
   const song = getSong(); if (!song) return;
@@ -373,5 +420,7 @@ const mixer = createMixer({ mount: els.mixMount, catalog: INSTRUMENTS, onEdit: a
 const roll = createPianoRoll({ mount: els.rollMount, onEdit: applyEdit });
 seq = createSequencer({ mount: els.seqMount, catalog: INSTRUMENTS, onChange: syncFromSequencer });
 els.seqLoad.addEventListener("click", () => { const s = getSong(); if (s && !seq.loadSong(s)) showError("can't load this score onto the grid (needs a uniform step pattern)"); });
-loadSong(normalizeSong(EXAMPLES[0].song));
+if (!tryHashScore()) loadSong(normalizeSong(EXAMPLES[0].song));
 markDirty(false);
+detectVocalEyes();
+window.AgentScore.scoreLink = (text) => location.origin + location.pathname + "#score=" + encodeURIComponent(textToB64(text));

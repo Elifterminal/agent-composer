@@ -26,6 +26,10 @@ values are clamped rather than rejected.
 | `pan` | number | `0` | −1 (L) … 1 (R) |
 | `mute` | boolean | `false` | |
 | `solo` | boolean | `false` | if ANY track is soloed, only soloed tracks sound (DAW semantics) |
+| `repeat` | number | `1` | loop the note list N times (1–64) — pattern compression for agents |
+| `transpose` | number | `0` | shift pitched notes by semitones (−36…36); drum names pass through |
+| `offsetBeats` | number | `0` | delay the whole track by N beats (pickups, layered grooves) |
+| `humanize` | number | `0` | 0–1 deterministic timing/velocity jitter (seeded — same score, same bytes) |
 | `fx` | Fx[] | `[]` | per-track effect chain (see below) |
 | `notes` | Note[] | `[]` | played sequentially |
 
@@ -58,14 +62,15 @@ time: <n/d>
 swing: <0..1>
 master: vol <dB> reverb <0..1>
 
-## <name> | <instrument> | vol <dB> pan <-1..1> [mute] [solo]
+## <name> | <instrument> | vol <dB> pan <-1..1> [mute] [solo] [xN] [tr <semis>] [off <beats>] [hum <0..1>]
 <token> <token> | <token> ...
 ```
 
 - **Header lines** (`tempo:`, `time:`, `swing:`, `master:`) may appear in any
   order before/after tracks; the `# ` line is the title.
 - **Track header**: `## ` then `Name | Instrument | options`. Instrument and
-  options are optional. Options: `vol <dB>`, `pan <n>`, `mute`, `solo`.
+  options are optional. Options: `vol <dB>`, `pan <n>`, `mute`, `solo`,
+  `x<N>` (repeat), `tr <semis>` (transpose), `off <beats>`, `hum <0..1>`.
 - **Pattern lines** under a track are a whitespace-separated list of tokens.
   Multiple pattern lines under one header are concatenated.
 
@@ -122,11 +127,15 @@ duration can't be parsed is skipped.
   the middle line as a rhythm guide.
 - No tempo automation, ties across barlines, or per-note articulation yet.
 
-## Drum kit (`drumkit` instrument)
+## Drum kits (`drumkit`, `kit808`, `kit909`)
 
-A `drumkit` track triggers synthesized percussion by name (the `dur` sets the
+A drum-kit track triggers synthesized percussion by name (the `dur` sets the
 step length, not the sound). All sounds are synthesized — nothing sampled, so
-the kit renders offline instantly and ships nothing copyrighted.
+the kits render offline instantly and ship nothing copyrighted. **All three
+kits answer to the same 19 names**, so swapping the whole kit flavor is a
+one-word change to `instrument`: `drumkit` (neutral), `kit808` (boomy kick,
+ticky hats, long clap), `kit909` (punchy clicky kick, bright snare, sizzly
+open hat).
 
 | group | names |
 |-------|-------|
@@ -159,6 +168,33 @@ run away), and the chain is capped at 8 nodes.
 | `tremolo` | `frequency` (9), `depth` (0.7), `wet` (0.8) |
 | `reverb` | `decay` (1.8), `wet` (0.3) |
 | `eq` | `low` `mid` `high` dB (0) |
+| `wah` | `baseFrequency` (100), `octaves` (6), `sensitivity` dB (0), `q` (2), `wet` (1) |
+| `autopan` | `frequency` (1), `depth` (1), `wet` (1) |
+| `autofilter` | `frequency` (1), `baseFrequency` (200), `octaves` (2.6), `depth` (1), `wet` (1) |
+| `vibrato` | `frequency` (5), `depth` (0.1), `wet` (1) |
+| `pitchshift` | `pitch` semitones −24…24 (0), `windowSize` (0.1), `wet` (1) |
+| `freqshift` | `frequency` Hz −2000…2000 (42), `wet` (1) |
+| `chebyshev` | `order` 1–100 (50), `wet` (0.5) — waveshaping distortion |
+| `widener` | `width` 0–1 (0.7) |
+| `compressor` | `threshold` (−24), `ratio` (4), `attack` (0.003), `release` (0.25), `knee` (30) |
+| `limiter` | `threshold` (−6) |
+
+### Ramp automation (sweeps written into the score)
+
+Any fx entry may carry a `ramp` — one object or an array — that sweeps one of
+its params linearly over time. `at`/`len` are in **beats**; `from` defaults to
+the param's current value. Works live and in WAV/MP3/stem exports; in looped
+live playback the sweep runs on the first pass (exports bake it in).
+
+```json
+{ "type": "filter", "mode": "lowpass", "freq": 200, "q": 6,
+  "ramp": { "param": "frequency", "from": 200, "to": 6000, "at": 0, "len": 16 } }
+{ "type": "wah", "ramp": [ { "param": "Q", "to": 12, "at": 8, "len": 8 } ] }
+```
+
+Rampable params are the Tone signal params of each effect (`frequency`, `wet`,
+`depth`, `feedback`, …); safety-critical ones stay clamped (`feedback` ≤ 0.92,
+`wet`/`depth`/`width` 0–1). Unknown params are ignored.
 
 ```json
 "tracks": [
@@ -207,6 +243,36 @@ Ignored (no audio effect): slurs `( )`, ties `-`, grace notes `{}`, decorations
 to the note-value vocabulary; notes longer than a whole note become repeated
 whole notes (no ties). ABC export is **not** provided — ABC can't represent the
 production layer (fx, sampler/slicer, mixing), so round-tripping would lose it.
+
+### Production directives in ABC
+
+ABC is notation-only, so AgentScore reads three directive forms that let an
+agent score the *production* inside the same ABC file:
+
+```abc
+X:1
+T:Wah Groove
+M:4/4
+L:1/8
+K:Am
+%%agentscore {"master":{"reverb":0.35},"swing":0.15}
+V:1 name="supersaw"
+%%agentscore {"volume":-12,"fx":[{"type":"wah"},{"type":"delay","time":"8n."}],"transpose":-12}
+ABcd efga | ...
+V:2
+%%MIDI program 33
+A,2 C2 E2 A,2 | ...
+```
+
+- `%%agentscore {json}` — any Track fields (`instrument volume pan mute solo
+  fx repeat transpose offsetBeats humanize name`) apply to the **current
+  voice**; any Song fields (`master swing tempo title instruments`) apply to
+  the song. Including `instruments` means even custom samplers/slicers can be
+  declared from ABC.
+- `%%MIDI program N` — the standard ABC MIDI directive; the GM program is
+  mapped to the closest AgentScore instrument. `%%MIDI channel 10` → drum kit.
+- `V:n name="<instrument-id>"` — a voice name that matches a catalog id sets
+  that voice's instrument directly.
 
 ## Custom instruments (agent-defined)
 

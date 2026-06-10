@@ -117,6 +117,10 @@ function normalizeTrack(t, i) {
     pan: clampNum(t.pan, -1, 1, 0),
     mute: !!t.mute,
     solo: !!t.solo,
+    repeat: Math.max(1, Math.min(64, Math.round(Number(t.repeat) || 1))),
+    transpose: Math.round(clampNum(t.transpose, -36, 36, 0)),
+    offsetBeats: clampNum(t.offsetBeats, 0, 512, 0),
+    humanize: clampNum(t.humanize, 0, 1, 0),
     fx: normalizeFx(t.fx),
     notes: (Array.isArray(t.notes) ? t.notes : []).map(normalizeNote).filter(Boolean),
   };
@@ -126,7 +130,17 @@ function normalizeTrack(t, i) {
 // whitelisted and the audio engine clamps params to safe ranges at build time
 // (e.g. delay feedback < 1, so a bad value can't blow up the render). Chain is
 // applied in order between the instrument and the track's pan/volume.
-const FX_TYPES = new Set(["filter", "delay", "pingpong", "distortion", "bitcrush", "chorus", "phaser", "tremolo", "reverb", "eq"]);
+const FX_TYPES = new Set(["filter", "delay", "pingpong", "distortion", "bitcrush", "chorus", "phaser", "tremolo", "reverb", "eq",
+  "wah", "autopan", "autofilter", "vibrato", "pitchshift", "freqshift", "chebyshev", "widener", "compressor", "limiter"]);
+// a ramp automates one fx param over time: { param, to, from?, at?, len? } (beats)
+function normalizeRamp(r) {
+  if (!r || typeof r !== "object" || typeof r.param !== "string" || !Number.isFinite(Number(r.to))) return null;
+  const o = { param: r.param.slice(0, 32), to: Number(r.to) };
+  if (Number.isFinite(Number(r.from))) o.from = Number(r.from);
+  o.at = clampNum(r.at, 0, 4096, 0);
+  o.len = clampNum(r.len, 0.01, 4096, 4);
+  return o;
+}
 function normalizeFx(arr) {
   if (!Array.isArray(arr)) return [];
   const out = [];
@@ -137,6 +151,11 @@ function normalizeFx(arr) {
     const o = { type };
     for (const [k, v] of Object.entries(fx)) {
       if (k === "type") continue;
+      if (k === "ramp") {
+        const ramps = (Array.isArray(v) ? v : [v]).map(normalizeRamp).filter(Boolean).slice(0, 8);
+        if (ramps.length) o.ramp = ramps.length > 1 ? ramps : ramps[0];
+        continue;
+      }
       if (typeof v === "number" && Number.isFinite(v)) o[k] = v;
       else if (typeof v === "string" && v.length <= 24) o[k] = v;       // e.g. filter "mode", delay "time"
     }
@@ -174,7 +193,9 @@ export function songToMd(song) {
   if (s.instruments && Object.keys(s.instruments).length) lines.push(`> instruments: ${JSON.stringify(s.instruments)}`);
   lines.push("");
   for (const t of s.tracks) {
-    const head = `## ${t.name} | ${t.instrument} | vol ${t.volume} pan ${t.pan}${t.mute ? " mute" : ""}${t.solo ? " solo" : ""}`;
+    const extra = `${t.repeat > 1 ? ` x${t.repeat}` : ""}${t.transpose ? ` tr ${t.transpose}` : ""}` +
+      `${t.offsetBeats ? ` off ${t.offsetBeats}` : ""}${t.humanize ? ` hum ${t.humanize}` : ""}`;
+    const head = `## ${t.name} | ${t.instrument} | vol ${t.volume} pan ${t.pan}${t.mute ? " mute" : ""}${t.solo ? " solo" : ""}${extra}`;
     lines.push(head);
     if (t.fx && t.fx.length) lines.push(`> fx: ${JSON.stringify(t.fx)}`);
     const toks = t.notes.map((n) => {
@@ -226,6 +247,10 @@ function parseTrackHeader(s) {
   const p = /pan\s*(-?[\d.]+)/i.exec(opts); if (p) t.pan = +p[1];
   if (/\bmute\b/i.test(opts)) t.mute = true;
   if (/\bsolo\b/i.exec(opts)) t.solo = true;
+  const x = /\bx(\d+)\b/i.exec(opts); if (x) t.repeat = +x[1];
+  const tr = /\btr\s*(-?\d+)/i.exec(opts); if (tr) t.transpose = +tr[1];
+  const off = /\boff\s*([\d.]+)/i.exec(opts); if (off) t.offsetBeats = +off[1];
+  const hum = /\bhum\s*([\d.]+)/i.exec(opts); if (hum) t.humanize = +hum[1];
   return t;
 }
 function parseNoteLine(line, track) {

@@ -2,7 +2,7 @@
 // render) can self-correct before exporting. Returns errors (will sound wrong /
 // silent) and warnings (probably not intended), plus a small info block. Pure,
 // no side effects.
-import { INSTRUMENTS, isDrumName } from "./audio.js";
+import { INSTRUMENTS, isDrumName, isDrumKit } from "./audio.js";
 const Tone = window.Tone;
 
 const KNOWN_IDS = new Set(INSTRUMENTS.map((i) => i.id));
@@ -14,6 +14,7 @@ function beatsOf(track) {
   for (const n of track.notes) {
     try { b += Tone.Time(n.rest != null ? n.rest : n.dur).toSeconds() * 2; } catch (e) {}  // seconds@120 == beats
   }
+  b = b * Math.max(1, Math.round(track.repeat || 1)) + Math.max(0, +track.offsetBeats || 0);
   return Math.round(b * 1000) / 1000;
 }
 function noteOk(p) { try { const m = Tone.Frequency(p).toMidi(); return m >= 0 && m <= 127; } catch (e) { return false; } }
@@ -35,7 +36,7 @@ export function lintSong(song) {
 
     if (!t.notes.length) { warnings.push(`${where}: no notes (silent)`); }
 
-    const isDrum = id === "drumkit";
+    const isDrum = isDrumKit(id);
     const isSlicer = custom[id]?.type === "slicer";   // notes are slice keys, not pitches
     let badNotes = 0;
     if (!isSlicer) for (const n of t.notes) {
