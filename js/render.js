@@ -56,11 +56,12 @@ async function main() {
     const blob = mp3 ? audioBufferToMp3Blob(buffer, job.kbps || 192) : audioBufferToWavBlob(buffer);
 
     out("uploading…");
-    const res = await fetch(`${base}/result`, {
-      method: "POST",
-      headers: { "Content-Type": mp3 ? "audio/mpeg" : "audio/wav" },
-      body: blob,
-    });
+    const headers = { "Content-Type": mp3 ? "audio/mpeg" : "audio/wav" };
+    if (lint.warnings.length) {
+      // surfaced in the job status so agents get feedback even on success
+      headers["X-Lint-Warnings"] = encodeURIComponent(lint.warnings.join("; ")).slice(0, 4000);
+    }
+    const res = await fetch(`${base}/result`, { method: "POST", headers, body: blob });
     if (!res.ok) return fail("result upload rejected: HTTP " + res.status);
     out("done");
   } catch (e) {
